@@ -1,0 +1,221 @@
+// Maya Pictures — Production Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  username      String      @unique
+  passwordHash  String
+  fullName      String
+  roleId        String
+  role          Role        @relation(fields: [roleId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  auditLogs     AuditLog[]
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique // SYSTEM_ADMINISTRATOR, CONTENT_ADMINISTRATOR
+  description String?
+  users       User[]
+  permissions Permission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  action      String   @unique // e.g. manage_portfolio, manage_inquiries, manage_settings
+  description String?
+  roles       Role[]
+}
+
+model PortfolioCategory {
+  id          String             @id @default(uuid())
+  name        String             @unique
+  slug        String             @unique
+  description String?
+  coverImage  String?
+  displayOrder Int               @default(0)
+  isPublished Boolean            @default(true)
+  projects    PortfolioProject[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model PortfolioProject {
+  id          String            @id @default(uuid())
+  title       String
+  slug        String            @unique
+  description String?
+  story       String?
+  location    String?
+  projectDate String?
+  coverImage  String?
+  isFeatured  Boolean           @default(false)
+  displayOrder Int              @default(0)
+  status      String            @default("PUBLISHED") // DRAFT, PUBLISHED, ARCHIVED
+  categoryId  String
+  category    PortfolioCategory @relation(fields: [categoryId], references: [id])
+  media       PortfolioMedia[]
+  seoTitle    String?
+  seoDesc     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model PortfolioMedia {
+  id          String           @id @default(uuid())
+  type        String           @default("image") // image, video
+  src         String
+  caption     String?
+  subLabel    String?
+  displayOrder Int             @default(0)
+  projectId   String
+  project     PortfolioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+}
+
+model Service {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String   @unique
+  shortDesc    String
+  longDesc     String?
+  icon         String?
+  coverImage   String?
+  features     String?  // JSON or comma separated
+  displayOrder Int      @default(0)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Package {
+  id           String   @id @default(uuid())
+  name         String
+  slug         String   @unique
+  priceDisplay String   // e.g. "2000ETB +", "10,000-15,000ETB +"
+  minPrice     Float?
+  maxPrice     Float?
+  currency     String   @default("ETB")
+  description  String
+  duration     String?
+  deliverables String?  // JSON string
+  isFeatured   Boolean  @default(false)
+  displayOrder Int      @default(0)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Story {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String
+  coverImage  String?
+  author      String   @default("Maya Pictures Studio")
+  category    String   @default("General")
+  tags        String?
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Testimonial {
+  id           String   @id @default(uuid())
+  clientName   String
+  role         String
+  quote        String
+  rating       Int      @default(5)
+  isFeatured   Boolean  @default(true)
+  displayOrder Int      @default(0)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model FAQ {
+  id           String   @id @default(uuid())
+  question     String
+  answer       String
+  category     String   @default("General")
+  displayOrder Int      @default(0)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Inquiry {
+  id                String   @id @default(uuid())
+  inquiryNumber     String   @unique
+  fullName          String
+  email             String
+  phone             String
+  contactMethod     String   @default("email")
+  service           String?
+  package           String?
+  preferredDate     String?
+  alternativeDate   String?
+  location          String?
+  expectedGuests    String?
+  budget            String?
+  message           String
+  status            String   @default("NEW") // NEW, CONTACTED, QUALIFIED, QUOTED, CONFIRMED, COMPLETED, CANCELLED, REJECTED
+  internalNotes     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model MediaAsset {
+  id         String   @id @default(uuid())
+  filename   String
+  originalName String
+  mimeType   String
+  sizeBytes  Int
+  url        String
+  altText    String?
+  createdAt  DateTime @default(now())
+}
+
+model WebsiteSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model NavigationItem {
+  id           String  @id @default(uuid())
+  label        String
+  url          String
+  displayOrder Int     @default(0)
+  isVisible    Boolean @default(true)
+  isButton     Boolean @default(false)
+}
+
+model SEOSetting {
+  id          String   @id @default(uuid())
+  page        String   @unique // home, portfolio, services, packages, about, contact
+  title       String
+  description String
+  ogImage     String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  resource   String
+  details    String?
+  createdAt  DateTime @default(now())
+}
