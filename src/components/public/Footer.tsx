@@ -4,6 +4,36 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Instagram, Send, Facebook, Youtube, MapPin, Phone, Mail, Heart, CheckCircle2, Globe } from 'lucide-react';
 
+interface LinkItem {
+  id: string;
+  label: string;
+  href: string;
+}
+
+const DEFAULT_FOOTER_QUICK: LinkItem[] = [
+  { id: 'q1', label: 'About Us', href: '/about' },
+  { id: 'q2', label: 'Portfolio Gallery', href: '/portfolio' },
+  { id: 'q3', label: 'Packages & Pricing', href: '/packages' },
+  { id: 'q4', label: 'Stories & Blog', href: '/stories' },
+  { id: 'q5', label: 'Contact Studio', href: '/contact' },
+  { id: 'q6', label: 'Admin Login', href: '/admin/login' },
+];
+
+const DEFAULT_FOOTER_SERVICES: LinkItem[] = [
+  { id: 's1', label: 'Wedding Photography', href: '/services' },
+  { id: 's2', label: 'Portrait Photography', href: '/services' },
+  { id: 's3', label: 'Event Photography', href: '/services' },
+  { id: 's4', label: 'Fashion Photography', href: '/services' },
+  { id: 's5', label: 'Product Photography', href: '/services' },
+  { id: 's6', label: 'Nature & Commercial', href: '/services' },
+];
+
+const DEFAULT_FOOTER_LEGAL: LinkItem[] = [
+  { id: 'l1', label: 'FAQ', href: '/faq' },
+  { id: 'l2', label: 'Privacy Policy', href: '/privacy' },
+  { id: 'l3', label: 'Terms & Conditions', href: '/terms' },
+];
+
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
@@ -18,6 +48,9 @@ export default function Footer() {
     { id: '2', platform: 'Telegram', url: 'https://t.me/mayapictures' },
     { id: '3', platform: 'YouTube', url: 'https://youtube.com/@mayapictures' },
   ]);
+  const [footerQuick, setFooterQuick] = useState<LinkItem[]>(DEFAULT_FOOTER_QUICK);
+  const [footerServices, setFooterServices] = useState<LinkItem[]>(DEFAULT_FOOTER_SERVICES);
+  const [footerLegal, setFooterLegal] = useState<LinkItem[]>(DEFAULT_FOOTER_LEGAL);
 
   useEffect(() => {
     async function loadFooterSettings() {
@@ -26,13 +59,12 @@ export default function Footer() {
         if (res.ok) {
           const data = await res.json();
           if (data.data) {
-            const { socialLinks: loadedSocials, ...rest } = data.data;
+            const { socialLinks: loadedSocials, footerQuick: fQ, footerServices: fS, footerLegal: fL, ...rest } = data.data;
             setSettings((prev: any) => ({ ...prev, ...rest }));
-            if (Array.isArray(loadedSocials)) {
-              setSocialLinks(loadedSocials);
-            } else if (typeof loadedSocials === 'string') {
-              try { setSocialLinks(JSON.parse(loadedSocials)); } catch (e) {}
-            }
+            if (Array.isArray(loadedSocials)) setSocialLinks(loadedSocials);
+            if (Array.isArray(fQ) && fQ.length > 0) setFooterQuick(fQ);
+            if (Array.isArray(fS) && fS.length > 0) setFooterServices(fS);
+            if (Array.isArray(fL) && fL.length > 0) setFooterLegal(fL);
           }
         }
       } catch (e) {}
@@ -110,81 +142,35 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Column 2: Quick Links */}
+          {/* Column 2: Dynamic Quick Links */}
           <div>
             <h4 className="font-semibold text-sm tracking-widest uppercase text-[#6a1b2a] mb-4">
               QUICK LINKS
             </h4>
             <ul className="space-y-2.5 text-xs md:text-sm text-[#3a2a2a]">
-              <li>
-                <Link href="/about" className="hover:text-[#6a1b2a] transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/portfolio" className="hover:text-[#6a1b2a] transition-colors">
-                  Portfolio Gallery
-                </Link>
-              </li>
-              <li>
-                <Link href="/packages" className="hover:text-[#6a1b2a] transition-colors">
-                  Packages & Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="/stories" className="hover:text-[#6a1b2a] transition-colors">
-                  Stories & Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-[#6a1b2a] transition-colors">
-                  Contact Studio
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin/login" className="hover:text-[#6a1b2a] transition-colors text-xs opacity-75">
-                  Admin Login
-                </Link>
-              </li>
+              {footerQuick.map((link) => (
+                <li key={link.id || link.href}>
+                  <Link href={link.href} className="hover:text-[#6a1b2a] transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 3: Services */}
+          {/* Column 3: Dynamic Services Links */}
           <div>
             <h4 className="font-semibold text-sm tracking-widest uppercase text-[#6a1b2a] mb-4">
               SERVICES
             </h4>
             <ul className="space-y-2.5 text-xs md:text-sm text-[#3a2a2a]">
-              <li>
-                <Link href="/services" className="hover:text-[#6a1b2a] transition-colors">
-                  Wedding Photography
-                </Link>
-              </li>
-              <li>
-                <Link href="/services" className="hover:text-[#6a1b2a] transition-colors">
-                  Portrait Photography
-                </Link>
-              </li>
-              <li>
-                <Link href="/services" className="hover:text-[#6a1b2a] transition-colors">
-                  Event Photography
-                </Link>
-              </li>
-              <li>
-                <Link href="/services" className="hover:text-[#6a1b2a] transition-colors">
-                  Fashion Photography
-                </Link>
-              </li>
-              <li>
-                <Link href="/services" className="hover:text-[#6a1b2a] transition-colors">
-                  Product Photography
-                </Link>
-              </li>
-              <li>
-                <Link href="/services" className="hover:text-[#6a1b2a] transition-colors">
-                  Nature & Commercial
-                </Link>
-              </li>
+              {footerServices.map((link) => (
+                <li key={link.id || link.href}>
+                  <Link href={link.href} className="hover:text-[#6a1b2a] transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -229,15 +215,11 @@ export default function Footer() {
           </div>
 
           <div className="flex items-center gap-6">
-            <Link href="/faq" className="hover:text-[#6a1b2a] transition-colors">
-              FAQ
-            </Link>
-            <Link href="/privacy" className="hover:text-[#6a1b2a] transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="hover:text-[#6a1b2a] transition-colors">
-              Terms & Conditions
-            </Link>
+            {footerLegal.map((link) => (
+              <Link key={link.id || link.href} href={link.href} className="hover:text-[#6a1b2a] transition-colors">
+                {link.label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>
