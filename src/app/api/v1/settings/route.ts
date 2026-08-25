@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { logActivity } from '@/lib/audit';
 
 export async function GET() {
   try {
@@ -36,8 +37,17 @@ export async function PATCH(request: Request) {
       });
     }
 
+    const changedKeys = Object.keys(body).join(', ');
+    await logActivity({
+      userId: user.id,
+      action: 'SETTINGS_UPDATE',
+      resource: 'Settings',
+      details: `Updated settings keys: ${changedKeys}`,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to update settings' }, { status: 500 });
   }
 }
+

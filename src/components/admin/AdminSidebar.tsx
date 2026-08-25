@@ -19,6 +19,8 @@ import {
   Users,
   Navigation,
   ShieldCheck,
+  BarChart3,
+  History,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -39,6 +41,7 @@ export const ALL_SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
       { label: 'Inquiries & Bookings', href: '/admin/inquiries', icon: Inbox, badge: 'Live' },
+      { label: 'Reports & Analytics', href: '/admin/reports', icon: BarChart3 },
     ],
   },
   {
@@ -61,6 +64,7 @@ export const ALL_SIDEBAR_SECTIONS: SidebarSection[] = [
       { label: 'Nav & Footer Links', href: '/admin/nav-footer', icon: Navigation },
       { label: 'Studio Settings', href: '/admin/settings', icon: Sliders },
       { label: 'Users & Roles', href: '/admin/users', icon: Users },
+      { label: 'Activity Audit Logs', href: '/admin/audit-logs', icon: History },
     ],
   },
 ];

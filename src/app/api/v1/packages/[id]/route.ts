@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { logActivity } from '@/lib/audit';
 
 export async function PATCH(
   request: Request,
@@ -15,6 +16,14 @@ export async function PATCH(
       where: { id: params.id },
       data: body,
     });
+
+    await logActivity({
+      userId: user.id,
+      action: 'PACKAGE_UPDATE',
+      resource: 'Packages',
+      details: `Updated package: "${updated.name}" — Price: ${updated.priceDisplay}`,
+    });
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to update package' }, { status: 500 });
@@ -29,11 +38,19 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await prisma.package.delete({
-      where: { id: params.id },
+    const pkg = await prisma.package.findUnique({ where: { id: params.id } });
+    await prisma.package.delete({ where: { id: params.id } });
+
+    await logActivity({
+      userId: user.id,
+      action: 'PACKAGE_DELETE',
+      resource: 'Packages',
+      details: `Deleted package: "${pkg?.name || params.id}"`,
     });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to delete package' }, { status: 500 });
   }
 }
+

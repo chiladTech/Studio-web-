@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import {
-  Sliders, Save, CheckCircle, Loader2, Globe, Mail, Phone, MapPin, Plus, Trash2, Edit2, X, Share2, DollarSign
+  Sliders, Save, CheckCircle, Loader2, Globe, Mail, Phone, MapPin, Plus, Trash2, Edit2, X, Share2, DollarSign, KeyRound, Eye, EyeOff, Lock
 } from 'lucide-react';
 
 export default function AdminSettingsPage() {
@@ -35,27 +35,44 @@ export default function AdminSettingsPage() {
   const [editingSocial, setEditingSocial] = useState<any>(null);
   const [socialForm, setSocialForm] = useState({ platform: '', url: '' });
 
+  // Security / Password change state
+  const [pwForm, setPwForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [changingPw, setChangingPw] = useState(false);
+  const [pwMessage, setPwMessage] = useState('');
+  const [pwError, setPwError] = useState('');
+
   useEffect(() => {
     async function init() {
-      const res = await fetch('/api/v1/auth/me');
-      if (!res.ok) { router.push('/admin/login'); return; }
-      const data = await res.json();
-      setUser(data.user);
+      try {
+        const res = await fetch('/api/v1/auth/me');
+        if (!res.ok) { router.push('/admin/login'); return; }
+        const data = await res.json();
+        setUser(data.user);
 
-      const sRes = await fetch('/api/v1/settings');
-      if (sRes.ok) {
-        const sData = await sRes.json();
-        if (sData.data) {
-          const { socialLinks: loadedSocials, ...rest } = sData.data;
-          setSettings((prev: any) => ({ ...prev, ...rest }));
-          if (Array.isArray(loadedSocials)) {
-            setSocialLinks(loadedSocials);
-          } else if (typeof loadedSocials === 'string') {
-            try { setSocialLinks(JSON.parse(loadedSocials)); } catch (e) {}
+        const sRes = await fetch('/api/v1/settings');
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          if (sData.data) {
+            const { socialLinks: loadedSocials, ...rest } = sData.data;
+            setSettings((prev: any) => ({ ...prev, ...rest }));
+            if (Array.isArray(loadedSocials)) {
+              setSocialLinks(loadedSocials);
+            } else if (typeof loadedSocials === 'string') {
+              try { setSocialLinks(JSON.parse(loadedSocials)); } catch (e) {}
+            }
           }
         }
+      } catch (err) {
+        router.push('/admin/login');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     init();
   }, [router]);
@@ -113,14 +130,56 @@ export default function AdminSettingsPage() {
       });
 
       if (res.ok) {
-        setMessage('Studio global settings & social links saved successfully!');
+        setMessage('Studio settings and social links updated successfully!');
       } else {
-        setMessage('Failed to save settings.');
+        setMessage('Failed to update settings');
       }
     } catch (e) {
-      setMessage('Error connecting to server.');
+      setMessage('Network error while updating settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwMessage('');
+    setPwError('');
+
+    if (pwForm.newPassword.length < 6) {
+      setPwError('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwError('New password and confirmation do not match.');
+      return;
+    }
+
+    setChangingPw(true);
+
+    try {
+      const res = await fetch(`/api/v1/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: pwForm.newPassword,
+          currentPassword: pwForm.currentPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setPwMessage('Your password has been changed successfully!');
+        setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        setPwError(data.error || 'Failed to change password');
+      }
+    } catch (err: any) {
+      setPwError('Network error while changing password');
+    } finally {
+      setChangingPw(false);
     }
   };
 
@@ -131,119 +190,112 @@ export default function AdminSettingsPage() {
       <AdminHeader user={user} />
       <div className="flex flex-1">
         <AdminSidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-8 max-w-4xl">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-[#6a1b2a]" />
-                Studio Global Settings & Social Media Links
+                Global Studio Settings & Profile Security
               </h1>
-              <p className="text-xs text-neutral-500 mt-1">Configure profile details, contact info, ETB currency, and add/edit/delete social links</p>
+              <p className="text-xs text-neutral-500 mt-1">
+                Manage business information, contact channels, currency, social media links, and change your password
+              </p>
             </div>
-            <button
-              onClick={handleSaveAll}
-              disabled={saving}
-              className="flex items-center gap-2 bg-[#6a1b2a] hover:bg-[#8f2a3e] text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow-md transition-all disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>Save Studio Settings</span>
-            </button>
           </div>
 
           {message && (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-sm flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-[#6a1b2a]" />
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-sm flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{message}</span>
             </div>
           )}
 
-          <form onSubmit={handleSaveAll} className="space-y-6 max-w-4xl">
-            {/* Studio Profile Card */}
-            <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 space-y-4">
-              <h2 className="text-sm font-bold text-neutral-900 flex items-center gap-2 uppercase tracking-wider">
+          <form onSubmit={handleSaveAll} className="space-y-6">
+            {/* General Info */}
+            <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+              <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Globe className="w-4 h-4 text-[#6a1b2a]" />
-                Studio Identity Profile
+                Business Identity
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-600 mb-1">Studio Brand Name</label>
+                  <label className="block text-xs font-semibold text-neutral-600 mb-1">Studio Name</label>
                   <input
                     type="text"
-                    value={settings.studioName}
+                    value={settings.studioName || ''}
                     onChange={(e) => setSettings({ ...settings, studioName: e.target.value })}
-                    className="w-full px-4 py-2.5 border rounded-xl text-sm font-bold outline-none focus:border-[#6a1b2a]"
+                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-600 mb-1">Currency Symbol</label>
+                  <label className="block text-xs font-semibold text-neutral-600 mb-1">Tagline / Slogan</label>
                   <input
                     type="text"
-                    value={settings.currencySymbol}
-                    onChange={(e) => setSettings({ ...settings, currencySymbol: e.target.value })}
-                    placeholder="ETB"
-                    className="w-full px-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-[#6a1b2a]"
+                    value={settings.tagline || ''}
+                    onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-600 mb-1">Studio Tagline</label>
-                <input
-                  type="text"
-                  value={settings.tagline}
-                  onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
-                  className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
-                />
               </div>
             </div>
 
-            {/* Contact Details Card */}
-            <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 space-y-4">
-              <h2 className="text-sm font-bold text-neutral-900 flex items-center gap-2 uppercase tracking-wider">
+            {/* Contact & Location */}
+            <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+              <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#6a1b2a]" />
-                Studio Contact Info
+                Contact & Studio Address
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-600 mb-1">Contact Email</label>
+                  <label className="block text-xs font-semibold text-neutral-600 mb-1 flex items-center gap-1">
+                    <Mail className="w-3.5 h-3.5 text-neutral-400" />
+                    Public Contact Email
+                  </label>
                   <input
                     type="email"
-                    value={settings.contactEmail}
+                    value={settings.contactEmail || ''}
                     onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
-                    className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
+                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-600 mb-1">Contact Phone</label>
+                  <label className="block text-xs font-semibold text-neutral-600 mb-1 flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5 text-neutral-400" />
+                    Public Contact Phone
+                  </label>
                   <input
                     type="text"
-                    value={settings.contactPhone}
+                    value={settings.contactPhone || ''}
                     onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
-                    className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
+                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-neutral-600 mb-1">Physical Studio Address</label>
+                <label className="block text-xs font-semibold text-neutral-600 mb-1 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-neutral-400" />
+                  Physical Studio Address
+                </label>
                 <input
                   type="text"
-                  value={settings.address}
+                  value={settings.address || ''}
                   onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                  className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
+                  className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
                 />
               </div>
             </div>
 
-            {/* Dynamic Social Media Links Manager Card */}
-            <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-neutral-900 flex items-center gap-2 uppercase tracking-wider">
+            {/* Social Media Links */}
+            <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-2">
                   <Share2 className="w-4 h-4 text-[#6a1b2a]" />
-                  Social Media Channels ({socialLinks.length} Active)
+                  Social Media Links
                 </h2>
                 <button
                   type="button"
                   onClick={handleOpenAddSocial}
-                  className="flex items-center gap-1.5 bg-[#6a1b2a] hover:bg-[#8f2a3e] text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow transition-all"
+                  className="flex items-center gap-1.5 bg-[#f4e8ea] hover:bg-[#e6d4d6] text-[#6a1b2a] px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Social Link</span>
@@ -252,28 +304,38 @@ export default function AdminSettingsPage() {
 
               <div className="space-y-3">
                 {socialLinks.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 hover:border-[#6a1b2a] transition-all">
-                    <div>
-                      <div className="font-bold text-sm text-neutral-900 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#6a1b2a]" />
-                        {item.platform}
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/80"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#6a1b2a]/10 text-[#6a1b2a] flex items-center justify-center font-bold text-xs">
+                        {item.platform?.charAt(0)}
                       </div>
-                      <div className="text-xs text-neutral-500 font-mono mt-0.5">{item.url}</div>
+                      <div>
+                        <div className="text-xs font-bold text-neutral-800">{item.platform}</div>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-neutral-500 font-mono hover:text-[#6a1b2a] hover:underline truncate max-w-xs block"
+                        >
+                          {item.url}
+                        </a>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => handleOpenEditSocial(item)}
-                        className="p-2 text-neutral-600 hover:text-[#6a1b2a] hover:bg-white rounded-lg transition-all"
-                        title="Edit Link"
+                        className="p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200 rounded-lg transition-all"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteSocial(item.id)}
-                        className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all"
-                        title="Delete Link"
+                        className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -300,6 +362,106 @@ export default function AdminSettingsPage() {
               </button>
             </div>
           </form>
+
+          {/* CHANGE PASSWORD CARD */}
+          <div className="mt-10 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <KeyRound className="w-5 h-5 text-[#6a1b2a]" />
+              <h2 className="text-base font-bold text-neutral-900">
+                Change Your Administrator Password
+              </h2>
+            </div>
+            <p className="text-xs text-neutral-500 mb-6">
+              Update the login password for your active account ({user?.email})
+            </p>
+
+            {pwMessage && (
+              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{pwMessage}</span>
+              </div>
+            )}
+
+            {pwError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-900 rounded-xl text-xs flex items-center gap-2">
+                <X className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{pwError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                  Current Password *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPw ? 'text' : 'password'}
+                    required
+                    value={pwForm.currentPassword}
+                    onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+                    placeholder="Enter current password"
+                    className="w-full px-3 py-2 pr-10 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPw(!showCurrentPw)}
+                    className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-600"
+                  >
+                    {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                  New Password * (min 6 characters)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPw ? 'text' : 'password'}
+                    required
+                    value={pwForm.newPassword}
+                    onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                    placeholder="Enter new password"
+                    className="w-full px-3 py-2 pr-10 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPw(!showNewPw)}
+                    className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-600"
+                  >
+                    {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                  Confirm New Password *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={pwForm.confirmPassword}
+                  onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
+                  placeholder="Repeat new password"
+                  className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-[#6a1b2a]"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={changingPw}
+                  className="py-2.5 px-6 bg-[#6a1b2a] hover:bg-[#8f2a3e] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {changingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                  <span>Update Password</span>
+                </button>
+              </div>
+            </form>
+          </div>
 
           {/* Social Link Add/Edit Modal */}
           {showSocialModal && (
