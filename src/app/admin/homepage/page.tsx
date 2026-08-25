@@ -49,11 +49,18 @@ export default function AdminHomepageConfigPage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const file = files[0];
+
+    // Client-side size check (200MB)
+    if (file.size > 200 * 1024 * 1024) {
+      setMessage('❌ File too large. Maximum allowed size is 200MB.');
+      return;
+    }
+
     setUploading(true);
-    setMessage('');
+    setMessage(`⏳ Uploading "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)...`);
 
     try {
-      const file = files[0];
       const body = new FormData();
       body.append('file', file);
 
@@ -62,17 +69,35 @@ export default function AdminHomepageConfigPage() {
         body,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setSettings((prev) => ({ ...prev, heroVideoUrl: data.url }));
-        setMessage('Hero background video uploaded successfully!');
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        const newUrl = data.url;
+
+        // 1. Update local UI state
+        setSettings((prev) => ({ ...prev, heroVideoUrl: newUrl }));
+
+        // 2. Auto-save the new video URL to settings immediately — don't make user click Save separately
+        const saveRes = await fetch('/api/v1/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ heroVideoUrl: newUrl }),
+        });
+
+        if (saveRes.ok) {
+          setMessage(`✅ Hero background video uploaded and saved successfully! File: ${file.name}`);
+        } else {
+          setMessage(`✅ Video uploaded but settings auto-save failed. Click "Save Homepage Changes" to apply it.`);
+        }
       } else {
-        setMessage('Video upload failed.');
+        setMessage(`❌ Upload failed: ${data.error || 'Unknown error. Please try again.'}`);
       }
     } catch (err) {
-      setMessage('Error during video upload.');
+      setMessage('❌ Network error during upload. Please check your connection and try again.');
     } finally {
       setUploading(false);
+      // Reset file input so same file can be re-uploaded if needed
+      e.target.value = '';
     }
   };
 
@@ -127,8 +152,16 @@ export default function AdminHomepageConfigPage() {
           </div>
 
           {message && (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-sm flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-[#6a1b2a]" />
+            <div className={`mb-6 p-4 rounded-xl text-sm flex items-start gap-2 ${
+              message.startsWith('❌')
+                ? 'bg-red-50 border border-red-200 text-red-800'
+                : message.startsWith('⚠️')
+                ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                : message.startsWith('⏳')
+                ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                : 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+            }`}>
+              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{message}</span>
             </div>
           )}
@@ -142,26 +175,39 @@ export default function AdminHomepageConfigPage() {
               </h2>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-600 mb-2">Upload Hero Video File (.mp4 / .webm)</label>
-                <label className="cursor-pointer bg-[#f4e8ea] hover:bg-[#e6d4d6] text-[#6a1b2a] border border-[#d8b8be] py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all max-w-md">
+                <label className="block text-xs font-semibold text-neutral-600 mb-2">
+                  Upload New Hero Video File (.mp4 / .webm recommended)
+                </label>
+                <label className={`cursor-pointer border py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all max-w-md ${
+                  uploading
+                    ? 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed'
+                    : 'bg-[#f4e8ea] hover:bg-[#e6d4d6] text-[#6a1b2a] border-[#d8b8be]'
+                }`}>
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  <span>Upload Video File from Computer</span>
+                  <span>{uploading ? 'Uploading, please wait...' : 'Choose & Upload Video File'}</span>
                   <input
                     type="file"
-                    accept="video/*"
+                    accept="video/mp4,video/webm,video/ogg,video/*"
                     className="hidden"
+                    disabled={uploading}
                     onChange={handleVideoUpload}
                   />
                 </label>
+                <p className="text-[11px] text-neutral-400 mt-1.5">
+                  Supported: MP4, WebM, OGG · Max size: 200MB · Video is automatically saved after upload
+                </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-600 mb-1">Video File URL Path</label>
+                <label className="block text-xs font-semibold text-neutral-600 mb-1">
+                  Active Video URL <span className="text-neutral-400 font-normal">(auto-filled after upload, or paste a URL manually)</span>
+                </label>
                 <input
                   type="text"
                   value={settings.heroVideoUrl}
                   onChange={(e) => setSettings({ ...settings, heroVideoUrl: e.target.value })}
                   className="w-full px-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-[#6a1b2a]"
+                  placeholder="/videos/your-video.mp4"
                 />
               </div>
 
@@ -169,7 +215,23 @@ export default function AdminHomepageConfigPage() {
               <div>
                 <span className="block text-xs font-semibold text-neutral-600 mb-1">Live Video Preview:</span>
                 <div className="h-56 w-full rounded-2xl bg-neutral-950 overflow-hidden relative border shadow-inner flex items-center justify-center">
-                  <video src={settings.heroVideoUrl} controls autoPlay muted loop className="w-full h-full object-cover" />
+                  {settings.heroVideoUrl ? (
+                    <video
+                      key={settings.heroVideoUrl}
+                      src={settings.heroVideoUrl}
+                      controls
+                      autoPlay
+                      muted
+                      loop
+                      className="w-full h-full object-cover"
+                      onError={() => setMessage('⚠️ Preview failed: the video URL may be invalid or the file has not fully saved yet.')}
+                    />
+                  ) : (
+                    <div className="text-neutral-500 text-xs text-center">
+                      <Play className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      No video selected yet
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

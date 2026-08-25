@@ -106,24 +106,62 @@ export async function sendInquiryNotifications(data: InquiryEmailData) {
       </div>
     `;
 
-    await Promise.allSettled([
-      transporter.sendMail({
+    const clientEmail = (data.email || '').trim().toLowerCase();
+
+    // 1. Send Management Alert
+    try {
+      await transporter.sendMail({
         from: `"${studioName}" <${fromEmail}>`,
         to: notificationEmail,
+        replyTo: clientEmail || undefined,
         subject: `🔔 New Session Inquiry [${data.inquiryNumber}] — ${data.fullName}`,
         html: adminHtml,
-      }),
-      transporter.sendMail({
-        from: `"${studioName}" <${fromEmail}>`,
-        to: data.email,
-        subject: `Your Booking Inquiry with ${studioName} [${data.inquiryNumber}]`,
-        html: clientHtml,
-      }),
-    ]);
+      });
+      console.log(`[Email Success] Admin notification delivered to ${notificationEmail} for ${data.inquiryNumber}`);
+    } catch (adminErr: any) {
+      console.error(`[Email Error] Failed to send admin notification for ${data.inquiryNumber}:`, adminErr?.message || adminErr);
+    }
+
+    // 2. Send Client Confirmation Receipt
+    if (clientEmail && clientEmail.includes('@')) {
+      // Pause 1.2 seconds to respect sandbox/free-tier SMTP rate limits (e.g. Mailtrap 1 email/sec limit)
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
+      try {
+        await transporter.sendMail({
+          from: `"${studioName}" <${fromEmail}>`,
+          to: clientEmail,
+          subject: `Your Booking Inquiry with ${studioName} [${data.inquiryNumber}]`,
+          html: clientHtml,
+        });
+        console.log(`[Email Success] Client confirmation receipt delivered to ${clientEmail} for ${data.inquiryNumber}`);
+      } catch (clientErr: any) {
+        // If rate limited, wait 2 seconds and retry once
+        if (clientErr?.message?.includes('Too many emails') || clientErr?.message?.includes('rate')) {
+          console.log(`[Email Notice] Rate limit encountered. Retrying client receipt in 2 seconds...`);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          try {
+            await transporter.sendMail({
+              from: `"${studioName}" <${fromEmail}>`,
+              to: clientEmail,
+              subject: `Your Booking Inquiry with ${studioName} [${data.inquiryNumber}]`,
+              html: clientHtml,
+            });
+            console.log(`[Email Success] Client confirmation receipt delivered to ${clientEmail} on retry.`);
+          } catch (retryErr: any) {
+            console.error(`[Email Error] Retry failed for client receipt:`, retryErr?.message || retryErr);
+          }
+        } else {
+          console.error(`[Email Error] Failed to send client confirmation receipt to ${clientEmail} for ${data.inquiryNumber}:`, clientErr?.message || clientErr);
+        }
+      }
+    } else {
+      console.warn(`[Email Warning] No valid client email provided for inquiry ${data.inquiryNumber} (received: "${data.email}")`);
+    }
 
     return { success: true };
   } catch (error: any) {
-    console.error('Failed to send inquiry emails:', error);
+    console.error('Failed in email dispatch pipeline:', error);
     return { success: false, error: error.message };
   }
 }

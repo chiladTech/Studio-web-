@@ -6,6 +6,7 @@ import { Camera, Award } from 'lucide-react';
 
 interface HeroSectionProps {
   videoUrl?: string;
+  settingsLoaded?: boolean;
   eyebrow?: string;
   titleLine1?: string;
   titleLine2?: string;
@@ -17,6 +18,7 @@ interface HeroSectionProps {
 
 export default function HeroSection({
   videoUrl = '/background.mp4',
+  settingsLoaded = true, // default true for cases where HeroSection is used standalone
   eyebrow = 'Capturing Moments, Creating Stories',
   titleLine1 = "WE DON'T JUST TAKE PHOTOS",
   titleLine2 = 'We Capture Emotions.',
@@ -27,19 +29,24 @@ export default function HeroSection({
 }: HeroSectionProps) {
   return (
     <section className="relative min-h-[85vh] lg:min-h-[90vh] my-6 rounded-2xl md:rounded-3xl overflow-hidden flex items-center justify-center text-center shadow-xl">
-      {/* Background Video */}
-      <video
-        key={videoUrl}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover z-0"
-      >
-        <source src={videoUrl} type="video/mp4" />
-        <source src={videoUrl} type="video/webm" />
-        Your browser does not support the video tag.
-      </video>
+      {/* Solid dark background — always visible, acts as placeholder while video loads */}
+      <div className="absolute inset-0 bg-neutral-900 z-0" />
+
+      {/* Background Video — only rendered after settings are confirmed to avoid old-video flash */}
+      {settingsLoaded && videoUrl && (
+        <video
+          key={videoUrl}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0 animate-fadeIn"
+          style={{ animation: 'fadeInVideo 0.8s ease-in forwards' }}
+        >
+          <source src={videoUrl} type="video/mp4" />
+          <source src={videoUrl} type="video/webm" />
+        </video>
+      )}
 
       {/* Hero Overlay */}
       <div className="absolute inset-0 bg-black/55 z-10 backdrop-brightness-95" />
@@ -90,6 +97,14 @@ export default function HeroSection({
           <span>{experienceBadge}</span>
         </div>
       </div>
+
+      {/* Inline keyframe for fade-in animation */}
+      <style>{`
+        @keyframes fadeInVideo {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
     </section>
   );
 }

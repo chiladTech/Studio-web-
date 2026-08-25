@@ -12,10 +12,11 @@ import { ArrowRight, Quote } from 'lucide-react';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [heroSettings, setHeroSettings] = useState<any>({
     heroTitle: 'CAPTURING TIME, CRAFTING MEMORIES',
     heroSubhead: 'Premier Photography & Videography Studio based in Addis Ababa, Ethiopia.',
-    heroVideoUrl: '/background.mp4',
+    heroVideoUrl: '', // empty on purpose — video is NOT rendered until settings are fetched
     ctaPrimaryText: 'BOOK A SESSION',
     ctaSecondaryText: 'VIEW PORTFOLIO',
   });
@@ -50,14 +51,31 @@ export default function HomePage() {
 
   useEffect(() => {
     async function loadHomePageData() {
-      // 1. Settings
+      // 1. Settings — load first before anything renders
       try {
         const sRes = await fetch('/api/v1/settings');
         if (sRes.ok) {
           const sData = await sRes.json();
-          if (sData.data) setHeroSettings((prev: any) => ({ ...prev, ...sData.data }));
+          if (sData.data) {
+            setHeroSettings((prev: any) => ({
+              ...prev,
+              ...sData.data,
+              // Fallback to default only if DB has no value set
+              heroVideoUrl: sData.data.heroVideoUrl || '/background.mp4',
+            }));
+          } else {
+            // No settings in DB yet — use default
+            setHeroSettings((prev: any) => ({ ...prev, heroVideoUrl: '/background.mp4' }));
+          }
+        } else {
+          setHeroSettings((prev: any) => ({ ...prev, heroVideoUrl: '/background.mp4' }));
         }
-      } catch (e) {}
+      } catch (e) {
+        setHeroSettings((prev: any) => ({ ...prev, heroVideoUrl: '/background.mp4' }));
+      } finally {
+        // Mark settings as loaded so HeroSection now renders the video
+        setSettingsLoaded(true);
+      }
 
       // 2. Portfolio
       try {
@@ -112,7 +130,8 @@ export default function HomePage() {
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full">
         {/* HERO SECTION WITH DYNAMIC PROPS */}
         <HeroSection
-          videoUrl={heroSettings.heroVideoUrl || '/background.mp4'}
+          videoUrl={settingsLoaded ? (heroSettings.heroVideoUrl || '/background.mp4') : ''}
+          settingsLoaded={settingsLoaded}
           titleLine1={heroSettings.heroTitle || "CAPTURING TIME, CRAFTING MEMORIES"}
           titleLine2=""
           tagline={heroSettings.heroSubhead || "Premier Photography & Videography Studio based in Addis Ababa, Ethiopia."}

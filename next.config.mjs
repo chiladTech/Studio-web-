@@ -10,6 +10,12 @@ const nextConfig = {
       },
     ],
   },
+  // Allow large video file uploads (up to 210MB)
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '210mb',
+    },
+  },
   async headers() {
     return [
       {
@@ -38,3 +44,4 @@ const nextConfig = {
 };
 
 export default nextConfig;
+

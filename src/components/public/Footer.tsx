@@ -16,7 +16,6 @@ const DEFAULT_FOOTER_QUICK: LinkItem[] = [
   { id: 'q3', label: 'Packages & Pricing', href: '/packages' },
   { id: 'q4', label: 'Stories & Blog', href: '/stories' },
   { id: 'q5', label: 'Contact Studio', href: '/contact' },
-  { id: 'q6', label: 'Admin Login', href: '/admin/login' },
 ];
 
 const DEFAULT_FOOTER_SERVICES: LinkItem[] = [
