@@ -18,23 +18,27 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     async function init() {
-      const res = await fetch('/api/v1/auth/me');
-      if (!res.ok) {
-        router.push('/admin/login');
-        return;
-      }
-      const data = await res.json();
-      setUser(data.user);
+      try {
+        const res = await fetch('/api/v1/auth/me');
+        if (!res.ok) {
+          window.location.href = '/admin/login';
+          return;
+        }
+        const data = await res.json();
+        setUser(data.user);
 
-      const inqRes = await fetch('/api/v1/inquiries');
-      if (inqRes.ok) {
-        const inqData = await inqRes.json();
-        setInquiries(inqData.data || []);
+        const inqRes = await fetch('/api/v1/inquiries');
+        if (inqRes.ok) {
+          const inqData = await inqRes.json();
+          setInquiries(inqData.data || []);
+        }
+        setLoading(false);
+      } catch (err) {
+        window.location.href = '/admin/login';
       }
-      setLoading(false);
     }
     init();
-  }, [router]);
+  }, []);
 
   const statuses = ['NEW', 'CONTACTED', 'QUALIFIED', 'QUOTED', 'CONFIRMED', 'COMPLETED'];
   const getCount = (status: string) => inquiries.filter((i) => i.status === status).length;
