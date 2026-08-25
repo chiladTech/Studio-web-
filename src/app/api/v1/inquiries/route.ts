@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { InquirySchema } from '@/lib/validation';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { sendInquiryNotifications } from '@/lib/email';
 
 // GET /api/v1/inquiries — Fetch all inquiries (Admin protected)
 export async function GET(request: Request) {
@@ -48,6 +49,21 @@ export async function POST(request: Request) {
         status: 'NEW',
       },
     });
+
+    // Send asynchronous transactional emails without blocking client response
+    sendInquiryNotifications({
+      inquiryNumber: inquiry.inquiryNumber,
+      fullName: inquiry.fullName,
+      email: inquiry.email,
+      phone: inquiry.phone,
+      service: inquiry.service,
+      package: inquiry.package,
+      preferredDate: inquiry.preferredDate,
+      location: inquiry.location,
+      budget: inquiry.budget,
+      message: inquiry.message,
+      contactMethod: inquiry.contactMethod,
+    }).catch((e) => console.error('Background email notification error:', e));
 
     return NextResponse.json({ success: true, data: inquiry }, { status: 201 });
   } catch (err: any) {
