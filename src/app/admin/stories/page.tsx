@@ -7,6 +7,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import {
   BookOpen, Plus, CheckCircle, Loader2, Edit2, Trash2, X, Upload, Image as ImageIcon, Eye, EyeOff
 } from 'lucide-react';
+import { uploadMediaDirect } from '@/lib/blob-client';
 
 const CATEGORIES = [
   'Behind the Scenes', 'Wedding Stories', 'Tips & Guides', 'Studio News',
@@ -75,15 +76,17 @@ export default function AdminStoriesPage() {
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const body = new FormData();
-      body.append('file', files[0]);
-      const res = await fetch('/api/v1/upload', { method: 'POST', body });
-      if (res.ok) {
-        const data = await res.json();
-        setFormData((prev) => ({ ...prev, coverImage: data.url }));
-      }
+      const file = files[0];
+      const result = await uploadMediaDirect(file, {
+        category: 'stories',
+      });
+      setFormData((prev) => ({ ...prev, coverImage: result.url }));
+    } catch (err: any) {
+      console.error('Stories upload error:', err);
+      alert(`Upload failed: ${err.message || 'Check connection'}`);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 

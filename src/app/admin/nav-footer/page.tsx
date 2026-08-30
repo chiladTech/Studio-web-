@@ -7,6 +7,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import {
   Navigation, Save, CheckCircle, Loader2, Plus, Trash2, Edit2, X, Layout, Link2, Upload, Image as ImageIcon, Sparkles, Calendar, RotateCcw
 } from 'lucide-react';
+import { uploadMediaDirect } from '@/lib/blob-client';
 
 interface NavLink {
   id: string;
@@ -115,25 +116,18 @@ export default function AdminNavFooterPage() {
 
     try {
       const file = files[0];
-      const body = new FormData();
-      body.append('file', file);
-
-      const res = await fetch('/api/v1/upload', {
-        method: 'POST',
-        body,
+      const result = await uploadMediaDirect(file, {
+        category: 'logo',
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setLogoUrl(data.url);
-        setMessage('Logo uploaded successfully! Click "Save All Changes" to publish across the website.');
-      } else {
-        setMessage('Logo upload failed.');
-      }
-    } catch {
-      setMessage('Error during logo upload.');
+      setLogoUrl(result.url);
+      setMessage('✅ Logo uploaded to Vercel Blob successfully! Click "Save All Changes" to publish across the website.');
+    } catch (err: any) {
+      console.error('Logo upload error:', err);
+      setMessage(`❌ Error during logo upload: ${err.message || 'Check connection'}`);
     } finally {
       setUploadingLogo(false);
+      e.target.value = '';
     }
   };
 

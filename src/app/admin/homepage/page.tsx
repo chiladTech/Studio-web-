@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import { Home, Save, CheckCircle, Loader2, Video, Sparkles, Upload, Play, Layout } from 'lucide-react';
+import { uploadMediaDirect } from '@/lib/blob-client';
 
 export default function AdminHomepageConfigPage() {
   const router = useRouter();
@@ -50,53 +51,39 @@ export default function AdminHomepageConfigPage() {
     if (!files || files.length === 0) return;
 
     const file = files[0];
-
-    // Client-side size check (200MB)
-    if (file.size > 200 * 1024 * 1024) {
-      setMessage('❌ File too large. Maximum allowed size is 200MB.');
-      return;
-    }
-
     setUploading(true);
-    setMessage(`⏳ Uploading "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)...`);
+    setMessage(`⏳ Uploading "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB) directly to Vercel Blob CDN...`);
 
     try {
-      const body = new FormData();
-      body.append('file', file);
-
-      const res = await fetch('/api/v1/upload', {
-        method: 'POST',
-        body,
+      const result = await uploadMediaDirect(file, {
+        category: 'hero',
+        onProgress: (percent) => {
+          setMessage(`⏳ Uploading "${file.name}" to Vercel Blob... ${percent}%`);
+        },
       });
 
-      const data = await res.json();
+      const newUrl = result.url;
 
-      if (res.ok && data.url) {
-        const newUrl = data.url;
+      // 1. Update local UI state
+      setSettings((prev) => ({ ...prev, heroVideoUrl: newUrl }));
 
-        // 1. Update local UI state
-        setSettings((prev) => ({ ...prev, heroVideoUrl: newUrl }));
+      // 2. Auto-save the new video URL to settings immediately
+      const saveRes = await fetch('/api/v1/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroVideoUrl: newUrl }),
+      });
 
-        // 2. Auto-save the new video URL to settings immediately — don't make user click Save separately
-        const saveRes = await fetch('/api/v1/settings', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ heroVideoUrl: newUrl }),
-        });
-
-        if (saveRes.ok) {
-          setMessage(`✅ Hero background video uploaded and saved successfully! File: ${file.name}`);
-        } else {
-          setMessage(`✅ Video uploaded but settings auto-save failed. Click "Save Homepage Changes" to apply it.`);
-        }
+      if (saveRes.ok) {
+        setMessage(`✅ Hero background video uploaded to Vercel Blob and saved successfully! File: ${file.name}`);
       } else {
-        setMessage(`❌ Upload failed: ${data.error || 'Unknown error. Please try again.'}`);
+        setMessage(`✅ Video uploaded to Vercel Blob (${newUrl}), but settings auto-save failed. Click "Save Homepage Changes" to apply it.`);
       }
-    } catch (err) {
-      setMessage('❌ Network error during upload. Please check your connection and try again.');
+    } catch (err: any) {
+      console.error('Video upload error:', err);
+      setMessage(`❌ Upload failed: ${err.message || 'Unknown error. Please check your connection.'}`);
     } finally {
       setUploading(false);
-      // Reset file input so same file can be re-uploaded if needed
       e.target.value = '';
     }
   };

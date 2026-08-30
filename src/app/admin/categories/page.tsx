@@ -7,6 +7,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import {
   FolderTree, Plus, Edit2, Trash2, CheckCircle, Loader2, Upload, Video, Image as ImageIcon, X, Play
 } from 'lucide-react';
+import { uploadMediaDirect } from '@/lib/blob-client';
 
 export default function AdminCategoriesPage() {
   const router = useRouter();
@@ -74,29 +75,25 @@ export default function AdminCategoriesPage() {
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    setMessage('');
+    const file = files[0];
+    setMessage(`⏳ Uploading "${file.name}" to Vercel Blob CDN...`);
 
     try {
-      const file = files[0];
-      const body = new FormData();
-      body.append('file', file);
-
-      const res = await fetch('/api/v1/upload', {
-        method: 'POST',
-        body,
+      const result = await uploadMediaDirect(file, {
+        category: 'gallery',
+        onProgress: (percent) => {
+          setMessage(`⏳ Uploading "${file.name}": ${percent}%`);
+        },
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setFormData((prev) => ({ ...prev, coverImage: data.url }));
-        setMessage('Category photo/video uploaded successfully!');
-      } else {
-        setMessage('Upload failed.');
-      }
-    } catch (err) {
-      setMessage('Error during file upload.');
+      setFormData((prev) => ({ ...prev, coverImage: result.url }));
+      setMessage('✅ Category photo uploaded to Vercel Blob successfully!');
+    } catch (err: any) {
+      console.error('Category upload error:', err);
+      setMessage(`❌ Error during file upload: ${err.message || 'Check connection'}`);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 

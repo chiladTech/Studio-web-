@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { put } from '@vercel/blob';
+import { generateSafeBlobPath, validateMediaFile } from '@/lib/blob';
 import fs from 'fs';
 import path from 'path';
 
-// Allow large video file uploads (up to 200MB)
 export const runtime = 'nodejs';
-export const maxDuration = 120; // 2 minute timeout for large uploads
+export const maxDuration = 60;
 
+/**
+ * Legacy/fallback upload route.
+ * Note: For production and large media (>4.5MB), use direct client upload via /api/v1/blob/upload.
+ */
 export async function POST(request: Request) {
   const user = await getAuthenticatedUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,65 +20,59 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+    const category = (formData.get('category') as string) || 'general';
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // File size guard: reject files over 200MB
-    const MAX_SIZE_BYTES = 200 * 1024 * 1024;
-    if (file.size > MAX_SIZE_BYTES) {
-      return NextResponse.json(
-        { error: 'File too large. Maximum allowed size is 200MB.' },
-        { status: 413 }
-      );
-    }
+    // Validate type and size
+    const { isVideo } = validateMediaFile({
+      type: file.type,
+      size: file.size,
+      name: file.name,
+    });
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const safePath = generateSafeBlobPath(file.name, category);
+    let publicUrl: string;
 
-    // Detect if it's a video or image
-    const mimeType = file.type || 'application/octet-stream';
-    const isVideo = mimeType.startsWith('video/');
-
-    // Clean filename — preserve safe ASCII chars and replace everything else with underscore
-    const originalName = file.name || 'uploaded_media';
-    const ext = path.extname(originalName) || (isVideo ? '.mp4' : '.jpg');
-    const basename = path.basename(originalName, ext);
-
-    // Safe sanitize: replace any char that isn't a-z, A-Z, 0-9, dash, underscore with underscore
-    // Also handle Unicode/Amharic filenames by replacing entirely if empty after sanitize
-    const sanitized = basename.replace(/[^a-zA-Z0-9\-_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-    const safeName = sanitized || 'media';
-    const filename = `${safeName}_${Date.now()}${ext}`;
-
-    // Use /videos/ subfolder for video files, /images/ for everything else
-    const subFolder = isVideo ? 'videos' : 'images';
-    let publicUrl = `/${subFolder}/${filename}`;
-
-    try {
-      // 1. Try local filesystem write (Standard Node / Local development)
+    // 1. Primary: Upload to Vercel Blob
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blob = await put(safePath, file, {
+        access: 'public',
+        contentType: file.type,
+      });
+      publicUrl = blob.url;
+    } else if (process.env.NODE_ENV === 'development') {
+      // Local development fallback when running offline without Vercel token
+      const subFolder = isVideo ? 'videos' : 'images';
       const uploadDir = path.join(process.cwd(), 'public', subFolder);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
+      const filename = path.basename(safePath);
       const filePath = path.join(uploadDir, filename);
-      await fs.promises.writeFile(filePath, buffer);
-    } catch (fsErr) {
-      // 2. Serverless fallback (e.g. Vercel read-only filesystem)
-      console.warn('Filesystem write not allowed. Storing media as base64 Data URI fallback.');
-      publicUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+      const bytes = await file.arrayBuffer();
+      await fs.promises.writeFile(filePath, Buffer.from(bytes));
+      publicUrl = `/${subFolder}/${filename}`;
+    } else {
+      return NextResponse.json(
+        {
+          error: 'Vercel Blob storage is not configured. Please set BLOB_READ_WRITE_TOKEN.',
+        },
+        { status: 500 }
+      );
     }
 
-    // Record asset in database
+    // 2. Persist MediaAsset metadata in PostgreSQL
     const asset = await prisma.mediaAsset.create({
       data: {
-        filename,
-        originalName,
-        mimeType,
+        filename: safePath,
+        originalName: file.name,
+        mimeType: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
         sizeBytes: file.size,
         url: publicUrl,
-        altText: isVideo ? 'Video asset' : undefined,
+        altText: file.name,
       },
     });
 
@@ -87,7 +86,10 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to upload file' }, { status: 500 });
+    console.error('Upload route error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to process media upload.' },
+      { status: 500 }
+    );
   }
 }

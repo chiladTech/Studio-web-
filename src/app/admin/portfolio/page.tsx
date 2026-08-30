@@ -7,6 +7,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import {
   Images, Plus, Edit2, Trash2, Star, CheckCircle, Loader2, Upload, Video, Image as ImageIcon, X, Play
 } from 'lucide-react';
+import { uploadMediaDirect } from '@/lib/blob-client';
 
 export default function AdminPortfolioPage() {
   const router = useRouter();
@@ -104,39 +105,36 @@ export default function AdminPortfolioPage() {
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    setMessage('');
+    setMessage(`⏳ Uploading ${files.length} file(s) directly to Vercel Blob CDN...`);
 
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const body = new FormData();
-        body.append('file', file);
+        setMessage(`⏳ Uploading "${file.name}" (${i + 1}/${files.length}) to Vercel Blob...`);
 
-        const res = await fetch('/api/v1/upload', {
-          method: 'POST',
-          body,
+        const result = await uploadMediaDirect(file, {
+          category: 'portfolio',
+          onProgress: (percent) => {
+            setMessage(`⏳ Uploading "${file.name}" (${i + 1}/${files.length}): ${percent}%`);
+          },
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          const isVid = file.type.startsWith('video/') || data.url.endsWith('.mp4') || data.url.endsWith('.webm');
-
-          if (isCover) {
-            setFormData((prev) => ({ ...prev, coverImage: data.url }));
-          }
-
-          setProjectMedia((prev) => [
-            ...prev,
-            { src: data.url, type: isVid ? 'video' : 'image', caption: file.name }
-          ]);
-        } else {
-          setMessage('File upload failed.');
+        if (isCover) {
+          setFormData((prev) => ({ ...prev, coverImage: result.url }));
         }
+
+        setProjectMedia((prev) => [
+          ...prev,
+          { src: result.url, type: result.isVideo ? 'video' : 'image', caption: file.name },
+        ]);
       }
-    } catch (err) {
-      setMessage('Error during file upload.');
+      setMessage('✅ Files uploaded to Vercel Blob successfully!');
+    } catch (err: any) {
+      console.error('Portfolio upload error:', err);
+      setMessage(`❌ Error during file upload: ${err.message || 'Check your connection'}`);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 

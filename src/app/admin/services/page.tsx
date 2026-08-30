@@ -7,6 +7,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import {
   Camera, Plus, Edit2, Trash2, CheckCircle, Loader2, Upload, Video, Image as ImageIcon, X, Play
 } from 'lucide-react';
+import { uploadMediaDirect } from '@/lib/blob-client';
 
 export default function AdminServicesPage() {
   const router = useRouter();
@@ -65,34 +66,30 @@ export default function AdminServicesPage() {
     setShowModal(true);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    setMessage('');
+    const file = files[0];
+    setMessage(`⏳ Uploading "${file.name}" to Vercel Blob CDN...`);
 
     try {
-      const file = files[0];
-      const body = new FormData();
-      body.append('file', file);
-
-      const res = await fetch('/api/v1/upload', {
-        method: 'POST',
-        body,
+      const result = await uploadMediaDirect(file, {
+        category: 'services',
+        onProgress: (percent) => {
+          setMessage(`⏳ Uploading "${file.name}": ${percent}%`);
+        },
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setFormData((prev) => ({ ...prev, coverImage: data.url }));
-        setMessage('Service photo/video uploaded successfully!');
-      } else {
-        setMessage('Upload failed.');
-      }
-    } catch (err) {
-      setMessage('Error during file upload.');
+      setFormData((prev) => ({ ...prev, coverImage: result.url }));
+      setMessage('✅ Service photo/video uploaded to Vercel Blob successfully!');
+    } catch (err: any) {
+      console.error('Service upload error:', err);
+      setMessage(`❌ Error during file upload: ${err.message || 'Check connection'}`);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -261,7 +258,7 @@ export default function AdminServicesPage() {
                         type="file"
                         accept="image/*,video/*"
                         className="hidden"
-                        onChange={handleFileUpload}
+                        onChange={handleCoverUpload}
                       />
                     </label>
                   </div>
