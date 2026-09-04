@@ -60,6 +60,7 @@ export async function uploadMediaDirect(
   try {
     const regRes = await fetch('/api/v1/media', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         filename: safePathname,

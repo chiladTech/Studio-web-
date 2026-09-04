@@ -3,9 +3,12 @@ import { del, head, list } from '@vercel/blob';
 // Supported MIME types and extensions
 export const ALLOWED_IMAGE_TYPES = [
   'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
   'image/png',
   'image/webp',
   'image/avif',
+  'image/gif',
   'image/svg+xml',
 ];
 
@@ -14,6 +17,9 @@ export const ALLOWED_VIDEO_TYPES = [
   'video/webm',
   'video/quicktime', // .mov
   'video/ogg',
+  'video/x-matroska', // .mkv
+  'video/x-msvideo', // .avi
+  'video/3gpp',
 ];
 
 export const ALL_ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];

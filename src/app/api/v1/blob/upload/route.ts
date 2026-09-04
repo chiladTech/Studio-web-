@@ -1,7 +1,6 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { ALL_ALLOWED_TYPES, MAX_VIDEO_SIZE_BYTES } from '@/lib/blob';
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -12,10 +11,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) {
+    console.error('BLOB_READ_WRITE_TOKEN is missing in environment variables.');
+    return NextResponse.json(
+      { error: 'Server configuration error: BLOB_READ_WRITE_TOKEN is not configured in environment variables.' },
+      { status: 500 }
+    );
+  }
+
   try {
     const jsonResponse = await handleUpload({
       body,
       request,
+      token,
       onBeforeGenerateToken: async (pathname: string, clientPayload?: string) => {
         // 1. Enforce Authentication & Admin Role
         const user = await getAuthenticatedUser();
@@ -42,26 +51,6 @@ export async function POST(request: Request): Promise<NextResponse> {
             altText: parsedPayload.altText,
           }),
         };
-      },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        try {
-          const payload = tokenPayload ? JSON.parse(tokenPayload) : {};
-          const isVideo = blob.contentType?.startsWith('video/') || false;
-
-          // Record or upsert MediaAsset in database
-          await prisma.mediaAsset.create({
-            data: {
-              filename: blob.pathname,
-              originalName: payload.originalName || blob.pathname,
-              mimeType: blob.contentType || (isVideo ? 'video/mp4' : 'image/jpeg'),
-              sizeBytes: 0, // Recorded upon client metadata save or estimated
-              url: blob.url,
-              altText: payload.altText || payload.originalName || 'Studio asset',
-            },
-          });
-        } catch (dbErr) {
-          console.error('Error during onUploadCompleted database sync:', dbErr);
-        }
       },
     });
 

@@ -64,15 +64,20 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     // Check if the asset is currently referenced across active studio content
     const url = asset.url;
-    const [projectCount, mediaCount, serviceCount, storyCount, categoryCount] = await Promise.all([
-      prisma.portfolioProject.count({ where: { coverImage: url } }),
-      prisma.portfolioMedia.count({ where: { src: url } }),
-      prisma.service.count({ where: { coverImage: url } }),
-      prisma.story.count({ where: { coverImage: url } }),
-      prisma.portfolioCategory.count({ where: { coverImage: url } }),
-    ]);
+    const [projectCount, mediaCount, serviceCount, storyCount, categoryCount, settingCount, seoCount] =
+      await Promise.all([
+        prisma.portfolioProject.count({ where: { coverImage: url } }),
+        prisma.portfolioMedia.count({ where: { src: url } }),
+        prisma.service.count({ where: { coverImage: url } }),
+        prisma.story.count({ where: { coverImage: url } }),
+        prisma.portfolioCategory.count({ where: { coverImage: url } }),
+        // Settings can hold media URLs (e.g. hero_video_url) — deleting those breaks live pages
+        prisma.websiteSetting.count({ where: { value: url } }),
+        // SEO og:image fields may reference Blob assets too
+        prisma.sEOSetting.count({ where: { ogImage: url } }),
+      ]);
 
-    const totalReferences = projectCount + mediaCount + serviceCount + storyCount + categoryCount;
+    const totalReferences = projectCount + mediaCount + serviceCount + storyCount + categoryCount + settingCount + seoCount;
     const { searchParams } = new URL(request.url);
     const force = searchParams.get('force') === 'true';
 
