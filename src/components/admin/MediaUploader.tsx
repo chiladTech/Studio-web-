@@ -276,7 +276,7 @@ export default function MediaUploader({
                   {item.status === 'COMPLETE' && (
                     <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
                       <CheckCircle className="w-3.5 h-3.5" />
-                      <span>Uploaded to Vercel Blob successfully</span>
+                      <span>Uploaded successfully</span>
                     </div>
                   )}
 

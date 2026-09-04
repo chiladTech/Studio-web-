@@ -1,17 +1,15 @@
-'use client';
-
-import React, { useState } from 'react';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
+import PublicNav from '@/components/public/PublicNav';
 import Footer from '@/components/public/Footer';
+import { getPublicSettings } from '@/lib/site-data';
 
-export default function TermsPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export const revalidate = 60;
+
+export default async function TermsPage() {
+  const settings = await getPublicSettings();
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-light text-[#1e1a1c] mb-6">
@@ -26,7 +24,7 @@ export default function TermsPage() {
         </div>
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

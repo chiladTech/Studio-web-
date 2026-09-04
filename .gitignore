@@ -40,3 +40,10 @@ prisma/*.db-journal
 
 # temporary / scratch
 scratch/
+
+# local scratch files (never commit)
+/landing.html
+/prompt.txt
+/run.bat
+/background.mp4
+/my-logo.png

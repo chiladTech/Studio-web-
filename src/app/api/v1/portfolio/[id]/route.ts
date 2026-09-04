@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 export async function PATCH(
   request: Request,
@@ -44,6 +45,8 @@ export async function PATCH(
       include: { category: true, media: true },
     });
 
+    revalidatePublicData();
+
     return NextResponse.json({ success: true, data: fullProject });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to update project' }, { status: 500 });
@@ -61,6 +64,7 @@ export async function DELETE(
     await prisma.portfolioProject.delete({
       where: { id: params.id },
     });
+    revalidatePublicData();
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to delete project' }, { status: 500 });

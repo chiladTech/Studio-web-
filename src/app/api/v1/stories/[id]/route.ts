@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 export async function PATCH(
   request: Request,
@@ -15,6 +16,8 @@ export async function PATCH(
       where: { id: params.id },
       data: body,
     });
+    revalidatePublicData();
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to update story' }, { status: 500 });
@@ -32,6 +35,7 @@ export async function DELETE(
     await prisma.story.delete({
       where: { id: params.id },
     });
+    revalidatePublicData();
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to delete story' }, { status: 500 });

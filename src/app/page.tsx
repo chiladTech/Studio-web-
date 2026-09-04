@@ -1,193 +1,119 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
+import PublicNav from '@/components/public/PublicNav';
 import HeroSection from '@/components/public/HeroSection';
 import PortfolioGrid, { PortfolioGridItem } from '@/components/public/PortfolioGrid';
 import PackageCard from '@/components/public/PackageCard';
 import Footer from '@/components/public/Footer';
-import { ArrowRight, Quote } from 'lucide-react';
+import {
+  getPublicSettings,
+  getPublicPortfolioItems,
+  getPackages,
+  getTestimonials,
+} from '@/lib/site-data';
+import { ArrowRight, Quote, Gem, User, CalendarCheck, Shirt, Package, TreePine } from 'lucide-react';
 
-export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [heroSettings, setHeroSettings] = useState<any>({
-    heroTitle: 'CAPTURING TIME, CRAFTING MEMORIES',
-    heroSubhead: 'Premier Photography & Videography Studio based in Addis Ababa, Ethiopia.',
-    heroVideoUrl: '', // empty on purpose — video is NOT rendered until settings are fetched
-    ctaPrimaryText: 'BOOK A SESSION',
-    ctaSecondaryText: 'VIEW PORTFOLIO',
-  });
-  const [portfolioItems, setPortfolioItems] = useState<PortfolioGridItem[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
-  const [testimonials, setTestimonials] = useState<any[]>([]);
+export const revalidate = 60;
 
-  const defaultPortfolioItems: PortfolioGridItem[] = [
-    { id: 'w1', type: 'image', src: '/images/wedding-1.jpg', label: 'WEDDING', subLabel: 'Love Stories', category: 'wedding' },
-    { id: 'p1', type: 'image', src: '/images/portrait_1.jpg', label: 'PORTRAITS', subLabel: 'People & Expressions', category: 'portraits' },
-    { id: 'e1', type: 'image', src: '/images/event-1.jpg', label: 'EVENTS', subLabel: 'Moments & Memories', category: 'events' },
-    { id: 'p2', type: 'image', src: '/images/portrait_2.jpg', label: 'PORTRAITS', subLabel: 'People & Expressions', category: 'portraits' },
-    { id: 'n1', type: 'image', src: '/images/nature-1.jpg', label: 'NATURE', subLabel: 'Wildlife & Landscapes', category: 'nature' },
-    { id: 'pr1', type: 'image', src: '/images/product-1.jpg', label: 'PRODUCT', subLabel: 'High-Quality Imagery', category: 'product' },
-    { id: 'wv1', type: 'video', src: '/images/wedding-video.mp4', label: 'WEDDING', subLabel: 'Highlight Film', category: 'wedding' },
-    { id: 'ev1', type: 'video', src: '/images/event-video.mp4', label: 'EVENTS', subLabel: 'Event Recap', category: 'events' },
-    { id: 'fv1', type: 'video', src: '/images/fashion-video.mp4', label: 'FASHION', subLabel: 'Editorial Reel', category: 'fashion' },
-    { id: 'sh1', type: 'video', src: '/images/ሽምግልና-video.mp4', label: 'ሽምግልና', subLabel: 'Cultural Ceremony', category: 'wedding' },
-  ];
+const defaultPortfolioItems: PortfolioGridItem[] = [
+  { id: 'w1', type: 'image', src: '/images/wedding-1.jpg', label: 'WEDDING', subLabel: 'Love Stories', category: 'wedding' },
+  { id: 'p1', type: 'image', src: '/images/portrait_1.jpg', label: 'PORTRAITS', subLabel: 'People & Expressions', category: 'portraits' },
+  { id: 'e1', type: 'image', src: '/images/event-1.jpg', label: 'EVENTS', subLabel: 'Moments & Memories', category: 'events' },
+  { id: 'p2', type: 'image', src: '/images/portrait_2.jpg', label: 'PORTRAITS', subLabel: 'People & Expressions', category: 'portraits' },
+  { id: 'n1', type: 'image', src: '/images/nature-1.jpg', label: 'NATURE', subLabel: 'Wildlife & Landscapes', category: 'nature' },
+  { id: 'pr1', type: 'image', src: '/images/product-1.jpg', label: 'PRODUCT', subLabel: 'High-Quality Imagery', category: 'product' },
+  { id: 'wv1', type: 'video', src: '/images/wedding-video.mp4', label: 'WEDDING', subLabel: 'Highlight Film', category: 'wedding' },
+  { id: 'ev1', type: 'video', src: '/images/event-video.mp4', label: 'EVENTS', subLabel: 'Event Recap', category: 'events' },
+  { id: 'fv1', type: 'video', src: '/images/fashion-video.mp4', label: 'FASHION', subLabel: 'Editorial Reel', category: 'fashion' },
+  { id: 'sh1', type: 'video', src: '/images/ሽምግልና-video.mp4', label: 'ሽምግልና', subLabel: 'Cultural Ceremony', category: 'wedding' },
+];
 
-  const defaultPackages = [
-    { id: '1', name: 'BEAUTY', priceDisplay: '2,000 ETB +', description: 'Perfect for small sessions & personal portraits.', duration: '1-2 Hours', deliverables: '15 Edited Digital Photos, Online Gallery, 1 Print', isFeatured: false },
-    { id: '2', name: 'STANDARD', priceDisplay: '10,000 - 15,000 ETB +', description: 'Ideal for events, engagements & family sessions.', duration: 'Half-Day (4 Hours)', deliverables: '50 Edited Digital Photos, Full HD Highlights Video, Online Gallery', isFeatured: true },
-    { id: '3', name: 'PREMIUM', priceDisplay: '80,000 ETB +', description: 'Complete all-inclusive coverage for your big day.', duration: 'Full Day Coverage', deliverables: 'Full Wedding Story, 4K Cinema Video, Photo Album, Drone Coverage, All RAW Files', isFeatured: false },
-  ];
+const defaultPackages = [
+  { id: '1', name: 'BEAUTY', priceDisplay: '2,000 ETB +', description: 'Perfect for small sessions & personal portraits.', duration: '1-2 Hours', deliverables: '15 Edited Digital Photos, Online Gallery, 1 Print', isFeatured: false },
+  { id: '2', name: 'STANDARD', priceDisplay: '10,000 - 15,000 ETB +', description: 'Ideal for events, engagements & family sessions.', duration: 'Half-Day (4 Hours)', deliverables: '50 Edited Digital Photos, Full HD Highlights Video, Online Gallery', isFeatured: true },
+  { id: '3', name: 'PREMIUM', priceDisplay: '80,000 ETB +', description: 'Complete all-inclusive coverage for your big day.', duration: 'Full Day Coverage', deliverables: 'Full Wedding Story, 4K Cinema Video, Photo Album, Drone Coverage, All RAW Files', isFeatured: false },
+];
 
-  const defaultTestimonials = [
-    { clientName: 'Sarah & Henok', role: 'Wedding Client', quote: 'Amazing experience! The photos turned out better than we imagined. Highly professional and super easy to work with.' },
-    { clientName: 'Michael & Emily', role: 'Engagement Session', quote: 'Incredible eye for detail and creativity. Captured our wedding day so beautifully. We will cherish these forever!' },
-    { clientName: 'David Thompson', role: 'Corporate Event', quote: 'Very professional, punctual and talented. The photos speak for themselves. Highly recommended for any corporate gala!' },
-  ];
+const defaultTestimonials = [
+  { clientName: 'Sarah & Henok', role: 'Wedding Client', quote: 'Amazing experience! The photos turned out better than we imagined. Highly professional and super easy to work with.' },
+  { clientName: 'Michael & Emily', role: 'Engagement Session', quote: 'Incredible eye for detail and creativity. Captured our wedding day so beautifully. We will cherish these forever!' },
+  { clientName: 'David Thompson', role: 'Corporate Event', quote: 'Very professional, punctual and talented. The photos speak for themselves. Highly recommended for any corporate gala!' },
+];
 
-  useEffect(() => {
-    async function loadHomePageData() {
-      // 1. Settings — load first before anything renders
-      try {
-        const sRes = await fetch('/api/v1/settings');
-        if (sRes.ok) {
-          const sData = await sRes.json();
-          if (sData.data) {
-            setHeroSettings((prev: any) => ({
-              ...prev,
-              ...sData.data,
-              // Fallback to default only if DB has no value set
-              heroVideoUrl: sData.data.heroVideoUrl || '/background.mp4',
-            }));
-          } else {
-            // No settings in DB yet — use default
-            setHeroSettings((prev: any) => ({ ...prev, heroVideoUrl: '/background.mp4' }));
-          }
-        } else {
-          setHeroSettings((prev: any) => ({ ...prev, heroVideoUrl: '/background.mp4' }));
-        }
-      } catch (e) {
-        setHeroSettings((prev: any) => ({ ...prev, heroVideoUrl: '/background.mp4' }));
-      } finally {
-        // Mark settings as loaded so HeroSection now renders the video
-        setSettingsLoaded(true);
-      }
+const categoryLinks = [
+  { href: '/portfolio?cat=wedding', label: 'Wedding', icon: Gem },
+  { href: '/portfolio?cat=portraits', label: 'Portraits', icon: User },
+  { href: '/portfolio?cat=events', label: 'Events', icon: CalendarCheck },
+  { href: '/portfolio?cat=fashion', label: 'Fashion', icon: Shirt },
+  { href: '/portfolio?cat=product', label: 'Product', icon: Package },
+  { href: '/portfolio?cat=nature', label: 'Nature', icon: TreePine },
+];
 
-      // 2. Portfolio
-      try {
-        const pRes = await fetch('/api/v1/portfolio');
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          if (pData.data && pData.data.length > 0) {
-            const mapped = pData.data.map((p: any) => ({
-              id: p.id,
-              type: p.coverImage?.endsWith('.mp4') ? 'video' : 'image',
-              src: p.coverImage || '/images/wedding-1.jpg',
-              label: p.title.toUpperCase(),
-              subLabel: p.category?.name || 'STUDIO WORK',
-              category: p.category?.slug || 'all',
-            }));
-            setPortfolioItems(mapped);
-          }
-        }
-      } catch (e) {}
+export default async function HomePage() {
+  const settings = await getPublicSettings();
+  const [portfolioResult, packagesResult, testimonialsResult] = await Promise.all([
+    getPublicPortfolioItems(),
+    getPackages(),
+    getTestimonials(),
+  ]);
 
-      // 3. Packages
-      try {
-        const pkgRes = await fetch('/api/v1/packages');
-        if (pkgRes.ok) {
-          const pkgData = await pkgRes.json();
-          if (pkgData.data && pkgData.data.length > 0) setPackages(pkgData.data);
-        }
-      } catch (e) {}
+  // Resilience policy: on a REAL database failure the homepage falls back to
+  // the demo collections it always used (the site stays presentable during an
+  // outage). On a successful-but-empty result (nothing published yet) the
+  // section is hidden instead of showing fake/demo records.
+  const portfolioItems = portfolioResult.error ? defaultPortfolioItems : portfolioResult.data;
+  const packages = packagesResult.error ? defaultPackages : packagesResult.data;
+  const testimonials = testimonialsResult.error ? defaultTestimonials : testimonialsResult.data;
+  const showPortfolioSection = portfolioItems.length > 0;
+  const showPackagesSection = packages.length > 0;
+  const showTestimonialsSection = testimonials.length > 0;
 
-      // 4. Testimonials
-      try {
-        const tRes = await fetch('/api/v1/testimonials');
-        if (tRes.ok) {
-          const tData = await tRes.json();
-          if (tData.data && tData.data.length > 0) setTestimonials(tData.data);
-        }
-      } catch (e) {}
-    }
-
-    loadHomePageData();
-  }, []);
-
-  const displayPortfolio = portfolioItems.length > 0 ? portfolioItems : defaultPortfolioItems;
-  const displayPackages = packages.length > 0 ? packages : defaultPackages;
-  const displayTestimonials = testimonials.length > 0 ? testimonials : defaultTestimonials;
+  // Hero values come straight from the server-rendered settings — the hero no
+  // longer waits on a client API round-trip before rendering the video URL.
+  const heroTitle = settings.heroTitle || 'CAPTURING TIME, CRAFTING MEMORIES';
+  const heroSubhead = settings.heroSubhead || 'Premier Photography & Videography Studio based in Addis Ababa, Ethiopia.';
+  const heroVideoUrl = settings.heroVideoUrl || '/background.mp4';
+  const ctaPrimaryText = settings.ctaPrimaryText || 'BOOK A SESSION';
+  const ctaSecondaryText = settings.ctaSecondaryText || 'VIEW PORTFOLIO';
+  const heroPoster = portfolioItems.find((item) => item.type === 'image')?.src || '/images/wedding-1.jpg';
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full">
         {/* HERO SECTION WITH DYNAMIC PROPS */}
         <HeroSection
-          videoUrl={settingsLoaded ? (heroSettings.heroVideoUrl || '/background.mp4') : ''}
-          settingsLoaded={settingsLoaded}
-          titleLine1={heroSettings.heroTitle || "CAPTURING TIME, CRAFTING MEMORIES"}
+          videoUrl={heroVideoUrl}
+          posterUrl={heroPoster}
+          titleLine1={heroTitle}
           titleLine2=""
-          tagline={heroSettings.heroSubhead || "Premier Photography & Videography Studio based in Addis Ababa, Ethiopia."}
-          ctaPrimaryText={heroSettings.ctaPrimaryText || 'BOOK A SESSION'}
-          ctaSecondaryText={heroSettings.ctaSecondaryText || 'VIEW PORTFOLIO'}
+          tagline={heroSubhead}
+          ctaPrimaryText={ctaPrimaryText}
+          ctaSecondaryText={ctaSecondaryText}
         />
 
         {/* CATEGORIES BAR */}
         <section className="my-12 border-t border-[#e8d8d8] pt-10">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-            <Link
-              href="/portfolio?cat=wedding"
-              className="flex flex-col items-center justify-center p-4 bg-[#f4e8ea] hover:bg-[#e6d4d6] rounded-2xl text-xs md:text-sm font-semibold uppercase text-[#2e2a2a] tracking-wider transition-all duration-200"
-            >
-              <i className="fas fa-ring text-2xl text-[#6a1b2a] mb-2" />
-              <span>Wedding</span>
-            </Link>
-            <Link
-              href="/portfolio?cat=portraits"
-              className="flex flex-col items-center justify-center p-4 bg-[#f4e8ea] hover:bg-[#e6d4d6] rounded-2xl text-xs md:text-sm font-semibold uppercase text-[#2e2a2a] tracking-wider transition-all duration-200"
-            >
-              <i className="fas fa-user text-2xl text-[#6a1b2a] mb-2" />
-              <span>Portraits</span>
-            </Link>
-            <Link
-              href="/portfolio?cat=events"
-              className="flex flex-col items-center justify-center p-4 bg-[#f4e8ea] hover:bg-[#e6d4d6] rounded-2xl text-xs md:text-sm font-semibold uppercase text-[#2e2a2a] tracking-wider transition-all duration-200"
-            >
-              <i className="fas fa-calendar-check text-2xl text-[#6a1b2a] mb-2" />
-              <span>Events</span>
-            </Link>
-            <Link
-              href="/portfolio?cat=fashion"
-              className="flex flex-col items-center justify-center p-4 bg-[#f4e8ea] hover:bg-[#e6d4d6] rounded-2xl text-xs md:text-sm font-semibold uppercase text-[#2e2a2a] tracking-wider transition-all duration-200"
-            >
-              <i className="fas fa-tshirt text-2xl text-[#6a1b2a] mb-2" />
-              <span>Fashion</span>
-            </Link>
-            <Link
-              href="/portfolio?cat=product"
-              className="flex flex-col items-center justify-center p-4 bg-[#f4e8ea] hover:bg-[#e6d4d6] rounded-2xl text-xs md:text-sm font-semibold uppercase text-[#2e2a2a] tracking-wider transition-all duration-200"
-            >
-              <i className="fas fa-box text-2xl text-[#6a1b2a] mb-2" />
-              <span>Product</span>
-            </Link>
-            <Link
-              href="/portfolio?cat=nature"
-              className="flex flex-col items-center justify-center p-4 bg-[#f4e8ea] hover:bg-[#e6d4d6] rounded-2xl text-xs md:text-sm font-semibold uppercase text-[#2e2a2a] tracking-wider transition-all duration-200"
-            >
-              <i className="fas fa-tree text-2xl text-[#6a1b2a] mb-2" />
-              <span>Nature</span>
-            </Link>
+            {categoryLinks.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <Link
+                  key={cat.href}
+                  href={cat.href}
+                  className="flex flex-col items-center justify-center p-4 bg-[#f4e8ea] hover:bg-[#e6d4d6] rounded-2xl text-xs md:text-sm font-semibold uppercase text-[#2e2a2a] tracking-wider transition-all duration-200"
+                >
+                  <Icon className="w-7 h-7 text-[#6a1b2a] mb-2" strokeWidth={1.75} />
+                  <span>{cat.label}</span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
         {/* FEATURED PORTFOLIO SECTION */}
+        {showPortfolioSection && (
         <section className="my-16">
           <div className="flex flex-wrap items-end justify-between mb-8 gap-4">
             <div>
@@ -206,10 +132,12 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <PortfolioGrid items={displayPortfolio} />
+          <PortfolioGrid items={portfolioItems} priorityCount={4} />
         </section>
+        )}
 
         {/* FEATURED PACKAGES SECTION */}
+        {showPackagesSection && (
         <section className="my-20 text-center">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-[#1e1a1c] mb-3">
             CHOOSE YOUR PERFECT PACKAGE · <strong className="font-semibold text-[#6a1b2a]">Packages That Fit Every Moment</strong>
@@ -219,7 +147,7 @@ export default function HomePage() {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto text-left">
-            {displayPackages.map((pkg) => (
+            {packages.map((pkg: any) => (
               <PackageCard
                 key={pkg.id}
                 name={pkg.name}
@@ -232,15 +160,17 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+        )}
 
         {/* TESTIMONIALS SECTION */}
+        {showTestimonialsSection && (
         <section className="my-20 bg-[#f4e8ea] rounded-[40px] p-8 sm:p-12 md:p-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-center text-[#1e1a1c] mb-12">
             <strong className="font-semibold text-[#6a1b2a]">KIND WORDS</strong> · What Our Clients Say
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {displayTestimonials.map((t, idx) => (
+            {testimonials.map((t: any, idx: number) => (
               <div key={t.id || idx} className="bg-white rounded-3xl p-8 shadow-sm space-y-4">
                 <Quote className="w-8 h-8 text-[#6a1b2a]/30" />
                 <p className="text-sm sm:text-base text-[#2a2222] leading-relaxed">
@@ -254,9 +184,10 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+        )}
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

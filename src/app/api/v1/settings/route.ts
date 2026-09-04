@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { logActivity } from '@/lib/audit';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 export async function GET() {
   try {
@@ -44,6 +45,8 @@ export async function PATCH(request: Request) {
       resource: 'Settings',
       details: `Updated settings keys: ${changedKeys}`,
     });
+
+    revalidatePublicData();
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

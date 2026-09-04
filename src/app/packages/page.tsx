@@ -1,45 +1,28 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
-import PackageCard from '@/components/public/PackageCard';
+import React from 'react';
+import PublicNav from '@/components/public/PublicNav';
 import Footer from '@/components/public/Footer';
+import PackageCard from '@/components/public/PackageCard';
+import EmptyState from '@/components/public/EmptyState';
+import { getPublicSettings, getPackages } from '@/lib/site-data';
 import { Tags } from 'lucide-react';
 
-export default function PackagesPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [packages, setPackages] = useState<any[]>([]);
+export const revalidate = 60;
 
-  const defaultPackages = [
-    { id: '1', name: 'BEAUTY', priceDisplay: '2,000 ETB +', description: 'Perfect for small sessions & personal portraits.', duration: '1-2 Hours', deliverables: '15 Edited Digital Photos, Online Gallery, 1 Print', isFeatured: false },
-    { id: '2', name: 'STANDARD', priceDisplay: '10,000 - 15,000 ETB +', description: 'Ideal for events, engagements & family sessions.', duration: 'Half-Day (4 Hours)', deliverables: '50 Edited Digital Photos, Full HD Highlights Video, Online Gallery', isFeatured: true },
-    { id: '3', name: 'PREMIUM', priceDisplay: '80,000 ETB +', description: 'Complete all-inclusive coverage for your big day.', duration: 'Full Day Coverage', deliverables: 'Full Wedding Story, 4K Cinema Video, Photo Album, Drone Coverage, All RAW files', isFeatured: false },
-  ];
+const defaultPackages = [
+  { id: '1', name: 'BEAUTY', priceDisplay: '2,000 ETB +', description: 'Perfect for small sessions & personal portraits.', duration: '1-2 Hours', deliverables: '15 Edited Digital Photos, Online Gallery, 1 Print', isFeatured: false },
+  { id: '2', name: 'STANDARD', priceDisplay: '10,000 - 15,000 ETB +', description: 'Ideal for events, engagements & family sessions.', duration: 'Half-Day (4 Hours)', deliverables: '50 Edited Digital Photos, Full HD Highlights Video, Online Gallery', isFeatured: true },
+  { id: '3', name: 'PREMIUM', priceDisplay: '80,000 ETB +', description: 'Complete all-inclusive coverage for your big day.', duration: 'Full Day Coverage', deliverables: 'Full Wedding Story, 4K Cinema Video, Photo Album, Drone Coverage, All RAW files', isFeatured: false },
+];
 
-  useEffect(() => {
-    async function loadDynamicPackages() {
-      try {
-        const res = await fetch('/api/v1/packages');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data && data.data.length > 0) {
-            setPackages(data.data);
-            return;
-          }
-        }
-      } catch (e) {}
-      setPackages(defaultPackages);
-    }
-    loadDynamicPackages();
-  }, []);
-
-  const displayPackages = packages.length > 0 ? packages : defaultPackages;
+export default async function PackagesPage() {
+  const settings = await getPublicSettings();
+  const packagesResult = await getPackages();
+  const showEmptyState = !packagesResult.error && packagesResult.data.length === 0;
+  const displayPackages = packagesResult.error ? defaultPackages : packagesResult.data;
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full py-12">
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -55,8 +38,15 @@ export default function PackagesPage() {
           </p>
         </div>
 
+        {showEmptyState ? (
+          <EmptyState
+            icon={<Tags className="w-6 h-6 text-[#6a1b2a]" />}
+            title="No packages are currently available."
+            message="Check back soon — new packages will appear here once published."
+          />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {displayPackages.map((pkg) => (
+          {displayPackages.map((pkg: any) => (
             <PackageCard
               key={pkg.id}
               name={pkg.name}
@@ -68,9 +58,10 @@ export default function PackagesPage() {
             />
           ))}
         </div>
+        )}
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

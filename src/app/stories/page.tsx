@@ -1,45 +1,28 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
+import React from 'react';
+import PublicNav from '@/components/public/PublicNav';
 import Footer from '@/components/public/Footer';
+import { getPublicSettings, getStories } from '@/lib/site-data';
+import EmptyState from '@/components/public/EmptyState';
 import { BookOpen, Calendar, User } from 'lucide-react';
 
-export default function StoriesPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [stories, setStories] = useState<any[]>([]);
+export const revalidate = 60;
 
-  const defaultStories = [
-    { id: '1', title: '10 Tips for Natural & Authentic Portraits', category: 'Tips & Tricks', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'Learn how to make your subjects feel at ease and capture genuine expressions during outdoor and studio sessions.' },
-    { id: '2', title: 'The Art of Cinematic Wedding Storytelling', category: 'Weddings', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'How we approach a full wedding day to document a cohesive, emotional visual story from morning prep to evening dancing.' },
-    { id: '3', title: 'Behind the Scenes: High-Fashion Editorial Shoot', category: 'Behind The Scenes', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'Lighting setups, wardrobe selection, and directional cues for capturing high-fashion editorial imagery.' },
-    { id: '4', title: 'Choosing the Perfect Photography Package', category: 'Guides', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'A complete guide to help you decide between portrait, event, and full-day wedding coverage.' },
-  ];
+const defaultStories = [
+  { id: '1', title: '10 Tips for Natural & Authentic Portraits', category: 'Tips & Tricks', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'Learn how to make your subjects feel at ease and capture genuine expressions during outdoor and studio sessions.' },
+  { id: '2', title: 'The Art of Cinematic Wedding Storytelling', category: 'Weddings', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'How we approach a full wedding day to document a cohesive, emotional visual story from morning prep to evening dancing.' },
+  { id: '3', title: 'Behind the Scenes: High-Fashion Editorial Shoot', category: 'Behind The Scenes', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'Lighting setups, wardrobe selection, and directional cues for capturing high-fashion editorial imagery.' },
+  { id: '4', title: 'Choosing the Perfect Photography Package', category: 'Guides', author: 'Maya Pictures Studio', createdAt: new Date().toISOString(), excerpt: 'A complete guide to help you decide between portrait, event, and full-day wedding coverage.' },
+];
 
-  useEffect(() => {
-    async function loadDynamicStories() {
-      try {
-        const res = await fetch('/api/v1/stories');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data && data.data.length > 0) {
-            setStories(data.data);
-            return;
-          }
-        }
-      } catch (e) {}
-      setStories(defaultStories);
-    }
-    loadDynamicStories();
-  }, []);
-
-  const displayList = stories.length > 0 ? stories : defaultStories;
+export default async function StoriesPage() {
+  const settings = await getPublicSettings();
+  const storiesResult = await getStories();
+  const showEmptyState = !storiesResult.error && storiesResult.data.length === 0;
+  const displayList = storiesResult.error ? defaultStories : storiesResult.data;
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full py-12">
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -55,8 +38,15 @@ export default function StoriesPage() {
           </p>
         </div>
 
+        {showEmptyState ? (
+          <EmptyState
+            icon={<BookOpen className="w-6 h-6 text-[#6a1b2a]" />}
+            title="No stories available yet."
+            message="Check back soon — new stories will appear here once published."
+          />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {displayList.map((st) => (
+          {displayList.map((st: any) => (
             <article
               key={st.id}
               className="bg-white rounded-3xl p-8 border border-[#ece0e0] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-4"
@@ -87,9 +77,10 @@ export default function StoriesPage() {
             </article>
           ))}
         </div>
+        )}
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

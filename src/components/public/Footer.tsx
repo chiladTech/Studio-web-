@@ -1,8 +1,7 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { Instagram, Send, Facebook, Youtube, MapPin, Phone, Mail, Heart, CheckCircle2, Globe } from 'lucide-react';
+import { Instagram, MapPin, Phone, Mail, Globe } from 'lucide-react';
+import NewsletterSubscribe from './NewsletterSubscribe';
 
 interface LinkItem {
   id: string;
@@ -33,51 +32,40 @@ const DEFAULT_FOOTER_LEGAL: LinkItem[] = [
   { id: 'l3', label: 'Terms & Conditions', href: '/terms' },
 ];
 
-export default function Footer() {
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-  const [settings, setSettings] = useState<any>({
-    studioName: 'MAYA PICTURES',
-    contactEmail: 'contact@mayapictures.com',
-    contactPhone: '+251 911 234 567',
-    address: 'Bole Road, Mega Tower, 4th Floor, Addis Ababa, Ethiopia',
-  });
-  const [socialLinks, setSocialLinks] = useState<any[]>([
-    { id: '1', platform: 'Instagram', url: 'https://instagram.com/mayapictures' },
-    { id: '2', platform: 'Telegram', url: 'https://t.me/mayapictures' },
-    { id: '3', platform: 'YouTube', url: 'https://youtube.com/@mayapictures' },
-  ]);
-  const [footerQuick, setFooterQuick] = useState<LinkItem[]>(DEFAULT_FOOTER_QUICK);
-  const [footerServices, setFooterServices] = useState<LinkItem[]>(DEFAULT_FOOTER_SERVICES);
-  const [footerLegal, setFooterLegal] = useState<LinkItem[]>(DEFAULT_FOOTER_LEGAL);
+const DEFAULT_FOOTER_BRAND = {
+  studioName: 'MAYA PICTURES',
+  contactEmail: 'contact@mayapictures.com',
+  contactPhone: '+251 911 234 567',
+  address: 'Bole Road, Mega Tower, 4th Floor, Addis Ababa, Ethiopia',
+};
 
-  useEffect(() => {
-    async function loadFooterSettings() {
-      try {
-        const res = await fetch('/api/v1/settings');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data) {
-            const { socialLinks: loadedSocials, footerQuick: fQ, footerServices: fS, footerLegal: fL, ...rest } = data.data;
-            setSettings((prev: any) => ({ ...prev, ...rest }));
-            if (Array.isArray(loadedSocials)) setSocialLinks(loadedSocials);
-            if (Array.isArray(fQ) && fQ.length > 0) setFooterQuick(fQ);
-            if (Array.isArray(fS) && fS.length > 0) setFooterServices(fS);
-            if (Array.isArray(fL) && fL.length > 0) setFooterLegal(fL);
-          }
-        }
-      } catch (e) {}
-    }
-    loadFooterSettings();
-  }, []);
+interface FooterProps {
+  /** Flat map of WebsiteSetting values fetched once server-side. */
+  settings?: Record<string, any>;
+}
 
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email) {
-      setSubscribed(true);
-      setEmail('');
-    }
+export default function Footer({ settings }: FooterProps) {
+  const brand = {
+    studioName: settings?.studioName || DEFAULT_FOOTER_BRAND.studioName,
+    contactEmail: settings?.contactEmail || DEFAULT_FOOTER_BRAND.contactEmail,
+    contactPhone: settings?.contactPhone || DEFAULT_FOOTER_BRAND.contactPhone,
+    address: settings?.address || DEFAULT_FOOTER_BRAND.address,
   };
+
+  const socialLinks: any[] = Array.isArray(settings?.socialLinks) && settings.socialLinks.length > 0
+    ? settings.socialLinks
+    : [
+        { id: '1', platform: 'Instagram', url: 'https://instagram.com/mayapictures' },
+        { id: '2', platform: 'Telegram', url: 'https://t.me/mayapictures' },
+        { id: '3', platform: 'YouTube', url: 'https://youtube.com/@mayapictures' },
+      ];
+
+  const footerQuick: LinkItem[] =
+    Array.isArray(settings?.footerQuick) && settings.footerQuick.length > 0 ? settings.footerQuick : DEFAULT_FOOTER_QUICK;
+  const footerServices: LinkItem[] =
+    Array.isArray(settings?.footerServices) && settings.footerServices.length > 0 ? settings.footerServices : DEFAULT_FOOTER_SERVICES;
+  const footerLegal: LinkItem[] =
+    Array.isArray(settings?.footerLegal) && settings.footerLegal.length > 0 ? settings.footerLegal : DEFAULT_FOOTER_LEGAL;
 
   return (
     <footer className="w-full bg-[#fcf9f6] border-t border-[#6a1b2a]/15 pt-12 pb-6 text-[#1e1a1c]">
@@ -86,7 +74,7 @@ export default function Footer() {
         <div className="flex flex-wrap items-center justify-between border-b border-[#e0d0d0] pb-6 mb-10 gap-4">
           <div className="flex items-center gap-3 text-lg md:text-xl font-normal tracking-wide">
             <Instagram className="w-6 h-6 text-[#6a1b2a]" />
-            <span className="font-semibold text-[#6a1b2a]">@{settings.studioName?.toLowerCase().replace(/\s+/g, '')}</span>
+            <span className="font-semibold text-[#6a1b2a]">@{brand.studioName?.toLowerCase().replace(/\s+/g, '')}</span>
           </div>
           <a
             href={socialLinks[0]?.url || 'https://instagram.com'}
@@ -103,7 +91,7 @@ export default function Footer() {
           {/* Column 1: Brand Info */}
           <div className="space-y-4">
             <h4 className="font-semibold text-sm tracking-widest uppercase text-[#6a1b2a]">
-              {settings.studioName || 'MAYA PICTURES'}
+              {brand.studioName || 'MAYA PICTURES'}
             </h4>
             <p className="text-xs md:text-sm text-[#3a2a2a] leading-relaxed">
               Capturing real moments and creating timeless memories. Let&apos;s tell your story through our editorial lens.
@@ -111,15 +99,15 @@ export default function Footer() {
             <div className="space-y-2 text-xs md:text-sm text-[#3a2a2a] pt-2">
               <p className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-[#6a1b2a] shrink-0" />
-                <span>{settings.address}</span>
+                <span>{brand.address}</span>
               </p>
               <p className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-[#6a1b2a] shrink-0" />
-                <span>{settings.contactPhone}</span>
+                <span>{brand.contactPhone}</span>
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-[#6a1b2a] shrink-0" />
-                <span>{settings.contactEmail}</span>
+                <span>{brand.contactEmail}</span>
               </p>
             </div>
 
@@ -181,36 +169,14 @@ export default function Footer() {
             <p className="text-xs md:text-sm text-[#3a2a2a] mb-4 leading-relaxed">
               Subscribe to get exclusive photography updates and seasonal offers.
             </p>
-            {subscribed ? (
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#6a1b2a] bg-[#f4e8ea] p-3 rounded-full border border-[#6a1b2a]/20">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Thank you for subscribing!</span>
-              </div>
-            ) : (
-              <form onSubmit={handleSubscribe} className="space-y-3">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="w-full px-4 py-2.5 rounded-full border border-gray-300 focus:border-[#6a1b2a] outline-none text-xs bg-white"
-                />
-                <button
-                  type="submit"
-                  className="bg-[#6a1b2a] hover:bg-[#8f2a3e] text-white px-6 py-2.5 rounded-full text-xs font-semibold tracking-wider uppercase transition-all"
-                >
-                  SUBSCRIBE
-                </button>
-              </form>
-            )}
+            <NewsletterSubscribe />
           </div>
         </div>
 
         {/* Footer Bottom Bar */}
         <div className="pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-[#5a4a4a] gap-4">
           <div className="flex items-center gap-1">
-            <span>© 2026 {settings.studioName || 'MAYA PICTURES'}. All rights reserved.</span>
+            <span>© 2026 {brand.studioName || 'MAYA PICTURES'}. All rights reserved.</span>
           </div>
 
           <div className="flex items-center gap-6">

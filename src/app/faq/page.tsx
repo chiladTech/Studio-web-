@@ -1,47 +1,33 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
+import React from 'react';
+import PublicNav from '@/components/public/PublicNav';
 import Footer from '@/components/public/Footer';
-import { HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import FaqList, { FaqItem } from '@/components/public/FaqList';
+import { getPublicSettings, getFaqs } from '@/lib/site-data';
+import EmptyState from '@/components/public/EmptyState';
+import { HelpCircle } from 'lucide-react';
 
-export default function FAQPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-  const [faqs, setFaqs] = useState<any[]>([]);
+export const revalidate = 60;
 
-  const defaultFaqs = [
-    { question: 'How do I book a photography session with Maya Pictures?', answer: 'You can easily request a session online by clicking "BOOK A SESSION" on our website or visiting our Booking page. Select your desired service, package, and preferred date. Our team will review details and confirm availability.' },
-    { question: 'How quickly will I receive my edited photos and video reels?', answer: 'Standard portrait sessions are delivered within 3-5 business days. Full event and wedding packages are delivered within 2-3 weeks via a password-protected online gallery.' },
-    { question: 'What payment currency and methods do you accept?', answer: 'All our package pricing is listed in ETB (Ethiopian Birr). We accept local bank transfers, mobile money, and direct cash payments at our studio.' },
-    { question: 'Can we customize a package for our wedding or event?', answer: 'Absolutely! We understand every ceremony is unique. We offer custom quotes that combine photo albums, drone videography, behind-the-scenes reels, and extra coverage hours.' },
-    { question: 'Do you travel outside Addis Ababa for photoshoots?', answer: 'Yes! Our photography team is available for destination weddings, commercial shoots, and outdoor nature sessions across all regions of Ethiopia.' },
-  ];
+const defaultFaqs: FaqItem[] = [
+  { question: 'How do I book a photography session with Maya Pictures?', answer: 'You can easily request a session online by clicking "BOOK A SESSION" on our website or visiting our Booking page. Select your desired service, package, and preferred date. Our team will review details and confirm availability.' },
+  { question: 'How quickly will I receive my edited photos and video reels?', answer: 'Standard portrait sessions are delivered within 3-5 business days. Full event and wedding packages are delivered within 2-3 weeks via a password-protected online gallery.' },
+  { question: 'What payment currency and methods do you accept?', answer: 'All our package pricing is listed in ETB (Ethiopian Birr). We accept local bank transfers, mobile money, and direct cash payments at our studio.' },
+  { question: 'Can we customize a package for our wedding or event?', answer: 'Absolutely! We understand every ceremony is unique. We offer custom quotes that combine photo albums, drone videography, behind-the-scenes reels, and extra coverage hours.' },
+  { question: 'Do you travel outside Addis Ababa for photoshoots?', answer: 'Yes! Our photography team is available for destination weddings, commercial shoots, and outdoor nature sessions across all regions of Ethiopia.' },
+];
 
-  useEffect(() => {
-    async function loadDynamicFaqs() {
-      try {
-        const res = await fetch('/api/v1/faq');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data && data.data.length > 0) {
-            setFaqs(data.data);
-            return;
-          }
-        }
-      } catch (e) {}
-      setFaqs(defaultFaqs);
-    }
-    loadDynamicFaqs();
-  }, []);
+export default async function FAQPage() {
+  const settings = await getPublicSettings();
+  const faqsResult = await getFaqs();
+  const showEmptyState = !faqsResult.error && faqsResult.data.length === 0;
 
-  const displayList = faqs.length > 0 ? faqs : defaultFaqs;
+  const displayList: FaqItem[] = faqsResult.error
+    ? defaultFaqs
+    : faqsResult.data.map((faq: any) => ({ id: faq.id, question: faq.question, answer: faq.answer }));
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full py-12">
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -57,37 +43,18 @@ export default function FAQPage() {
           </p>
         </div>
 
-        <div className="max-w-3xl mx-auto space-y-4">
-          {displayList.map((faq, idx) => {
-            const isOpen = openIndex === idx;
-            return (
-              <div
-                key={faq.id || idx}
-                className="bg-white rounded-2xl border border-[#ece0e0] shadow-sm overflow-hidden transition-all"
-              >
-                <button
-                  onClick={() => setOpenIndex(isOpen ? null : idx)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left font-medium text-base text-[#1e1a1c] hover:text-[#6a1b2a] transition-colors"
-                >
-                  <span>{faq.question || faq.q}</span>
-                  {isOpen ? (
-                    <ChevronUp className="w-5 h-5 text-[#6a1b2a] shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />
-                  )}
-                </button>
-                {isOpen && (
-                  <div className="px-6 pb-6 pt-2 text-sm text-[#4a3a3a] leading-relaxed border-t border-gray-100 bg-[#fcf9f6]/50">
-                    {faq.answer || faq.a}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {showEmptyState ? (
+          <EmptyState
+            icon={<HelpCircle className="w-6 h-6 text-[#6a1b2a]" />}
+            title="No frequently asked questions available."
+            message="Check back soon — answers will appear here once published."
+          />
+        ) : (
+          <FaqList faqs={displayList} />
+        )}
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

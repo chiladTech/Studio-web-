@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { deleteBlobAsset } from '@/lib/blob';
 import { logActivity } from '@/lib/audit';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 interface RouteParams {
   params: { id: string };
@@ -41,6 +42,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         originalName: originalName !== undefined ? originalName : undefined,
       },
     });
+
+    revalidatePublicData();
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
@@ -106,6 +109,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       resource: 'MediaAsset',
       details: `Deleted media asset "${asset.originalName}" (${url})`,
     });
+
+    revalidatePublicData();
 
     return NextResponse.json({
       success: true,

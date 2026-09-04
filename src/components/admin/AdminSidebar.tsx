@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   BarChart3,
   History,
+  X,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -69,30 +70,19 @@ export const ALL_SIDEBAR_SECTIONS: SidebarSection[] = [
   },
 ];
 
-export default function AdminSidebar() {
-  const pathname = usePathname();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [allowedPages, setAllowedPages] = useState<string[] | null>(null);
+interface AdminSidebarProps {
+  user?: any;
+  mobileOpen: boolean;
+  onClose: () => void;
+}
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const res = await fetch('/api/v1/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          setCurrentUser(data.user);
-          if (data.user?.roleName === 'CONTENT_ADMINISTRATOR') {
-            setAllowedPages(data.user.allowedPages || []);
-          } else {
-            setAllowedPages(null); // System admin has access to everything
-          }
-        }
-      } catch (e) {}
-    }
-    loadUser();
-  }, []);
+/** Shared navigation content used by both the desktop sidebar and the mobile drawer. */
+function SidebarNav({ user, onNavigate }: { user?: any; onNavigate?: () => void }) {
+  const pathname = usePathname();
 
   // Filter sections based on permissions if user is Content Admin
+  const allowedPages = user?.roleName === 'CONTENT_ADMINISTRATOR' ? user.allowedPages || [] : null;
+
   const filteredSections = ALL_SIDEBAR_SECTIONS.map((section) => {
     if (!allowedPages) return section; // System admin sees all
 
@@ -104,17 +94,25 @@ export default function AdminSidebar() {
   }).filter((section) => section.items.length > 0);
 
   return (
-    <aside className="w-64 bg-neutral-900 text-neutral-300 min-h-[calc(100vh-65px)] p-4 flex flex-col justify-between shrink-0 overflow-y-auto">
-      <div className="space-y-5">
-        {currentUser?.roleName && (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="space-y-5 flex-1 overflow-y-auto px-4 py-4">
+        {user?.roleName && (
           <div className="px-3 py-2 bg-neutral-800/80 rounded-xl border border-neutral-700/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ShieldCheck className={`w-3.5 h-3.5 ${currentUser.roleName === 'SYSTEM_ADMINISTRATOR' ? 'text-amber-400' : 'text-blue-400'}`} />
+              <ShieldCheck
+                className={`w-3.5 h-3.5 ${
+                  user.roleName === 'SYSTEM_ADMINISTRATOR' ? 'text-amber-400' : 'text-blue-400'
+                }`}
+              />
               <span className="text-[10px] font-bold tracking-wider uppercase text-neutral-200">
-                {currentUser.roleName === 'SYSTEM_ADMINISTRATOR' ? 'System Admin' : 'Content Admin'}
+                {user.roleName === 'SYSTEM_ADMINISTRATOR' ? 'System Admin' : 'Content Admin'}
               </span>
             </div>
-            <span className={`w-2 h-2 rounded-full ${currentUser.roleName === 'SYSTEM_ADMINISTRATOR' ? 'bg-amber-400' : 'bg-blue-400'}`} />
+            <span
+              className={`w-2 h-2 rounded-full ${
+                user.roleName === 'SYSTEM_ADMINISTRATOR' ? 'bg-amber-400' : 'bg-blue-400'
+              }`}
+            />
           </div>
         )}
 
@@ -131,6 +129,8 @@ export default function AdminSidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
                       isActive
                         ? 'bg-[#6a1b2a] text-white shadow-md'
@@ -160,9 +160,54 @@ export default function AdminSidebar() {
         )}
       </div>
 
-      <div className="pt-4 border-t border-neutral-800 text-[11px] text-neutral-500 text-center">
+      <div className="px-4 pt-4 pb-4 border-t border-neutral-800 text-[11px] text-neutral-500 text-center">
         Maya Pictures CMS v1.0
       </div>
-    </aside>
+    </div>
+  );
+}
+
+export default function AdminSidebar({ user, mobileOpen, onClose }: AdminSidebarProps) {
+  return (
+    <>
+      {/* Mobile drawer backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity duration-300 ${
+          mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Mobile drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-neutral-900 text-neutral-300 flex flex-col shadow-2xl transform transition-transform duration-300 lg:hidden ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Admin navigation"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800 shrink-0">
+          <span className="text-xs font-bold tracking-widest text-neutral-400 uppercase">
+            Navigation
+          </span>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800"
+            aria-label="Close navigation menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <SidebarNav user={user} onNavigate={onClose} />
+      </aside>
+
+      {/* Desktop static sidebar */}
+      <aside
+        className="hidden lg:flex w-64 shrink-0 bg-neutral-900 text-neutral-300 overflow-y-auto min-h-0"
+        aria-label="Admin navigation"
+      >
+        <SidebarNav user={user} />
+      </aside>
+    </>
   );
 }

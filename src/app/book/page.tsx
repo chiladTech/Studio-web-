@@ -1,28 +1,18 @@
-'use client';
-
-import React, { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
-import BookingForm from '@/components/public/BookingForm';
+import React, { Suspense } from 'react';
+import PublicNav from '@/components/public/PublicNav';
 import Footer from '@/components/public/Footer';
+import BookContent from '@/components/public/BookContent';
+import { getPublicSettings } from '@/lib/site-data';
 import { Calendar } from 'lucide-react';
 
-function BookingContent() {
-  const searchParams = useSearchParams();
-  const initialPackage = searchParams.get('package') || '';
-  const initialService = searchParams.get('service') || '';
+export const revalidate = 60;
 
-  return <BookingForm initialPackage={initialPackage} initialService={initialService} />;
-}
-
-export default function BookPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export default async function BookPage() {
+  const settings = await getPublicSettings();
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full py-12">
         <div className="text-center max-w-3xl mx-auto mb-10">
@@ -39,11 +29,11 @@ export default function BookPage() {
         </div>
 
         <Suspense fallback={<div className="text-center py-12">Loading booking form...</div>}>
-          <BookingContent />
+          <BookContent />
         </Suspense>
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

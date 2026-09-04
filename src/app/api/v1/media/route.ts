@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 // GET /api/v1/media — Retrieve media assets with optional filtering
 export async function GET(request: Request) {
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     // STRICT ARCHITECTURAL RULE: Never store raw Base64 data URLs in PostgreSQL
     if (url.startsWith('data:')) {
       return NextResponse.json(
-        { error: 'Base64 data URLs are not permitted. Please upload to Vercel Blob.' },
+        { error: 'Base64 data URLs are not permitted. Please upload media through the uploader instead.' },
         { status: 400 }
       );
     }
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
           altText: altText !== undefined ? altText : existing.altText,
         },
       });
+      revalidatePublicData();
       return NextResponse.json({ success: true, data: updated });
     }
 
@@ -76,6 +78,8 @@ export async function POST(request: Request) {
         altText: altText || originalName,
       },
     });
+
+    revalidatePublicData();
 
     return NextResponse.json({ success: true, data: asset }, { status: 201 });
   } catch (error: any) {

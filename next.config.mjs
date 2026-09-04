@@ -2,11 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    unoptimized: true,
+    // next/image optimization enabled — remote images are served only from
+    // Vercel Blob storage (media uploaded through the CMS). Local /images/*
+    // and /my-logo.png are same-origin and need no pattern.
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: '**.blob.vercel-storage.com',
       },
     ],
   },
@@ -44,4 +46,3 @@ const nextConfig = {
 };
 
 export default nextConfig;
-

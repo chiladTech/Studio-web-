@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X, Home, Info, Camera, Images, Tags, BookOpen, HelpCircle, Mail, Calendar, Instagram, Send, Facebook, Youtube } from 'lucide-react';
@@ -8,32 +8,17 @@ import { X, Home, Info, Camera, Images, Tags, BookOpen, HelpCircle, Mail, Calend
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Flat map of WebsiteSetting values (fetched once server-side). */
+  settings?: Record<string, any>;
 }
 
-export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
+export default function MobileMenu({ isOpen, onClose, settings }: MobileMenuProps) {
   const pathname = usePathname();
-  const [logoUrl, setLogoUrl] = useState<string>('/my-logo.png');
-  const [headerCtaText, setHeaderCtaText] = useState<string>('BOOK A SESSION');
-  const [headerCtaLink, setHeaderCtaLink] = useState<string>('/book');
-  const [studioName, setStudioName] = useState<string>('MAYA PICTURES');
 
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const res = await fetch('/api/v1/settings');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data) {
-            if (data.data.logoUrl !== undefined) setLogoUrl(data.data.logoUrl);
-            if (data.data.headerCtaText) setHeaderCtaText(data.data.headerCtaText);
-            if (data.data.headerCtaLink) setHeaderCtaLink(data.data.headerCtaLink);
-            if (data.data.studioName) setStudioName(data.data.studioName);
-          }
-        }
-      } catch {}
-    }
-    loadSettings();
-  }, []);
+  const logoUrl = settings?.logoUrl !== undefined ? settings.logoUrl : '/my-logo.png';
+  const headerCtaText = settings?.headerCtaText || 'BOOK A SESSION';
+  const headerCtaLink = settings?.headerCtaLink || '/book';
+  const studioName = settings?.studioName || 'MAYA PICTURES';
 
   if (!isOpen) return null;
 

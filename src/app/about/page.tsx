@@ -1,19 +1,18 @@
-'use client';
-
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
+import PublicNav from '@/components/public/PublicNav';
 import Footer from '@/components/public/Footer';
+import { getPublicSettings } from '@/lib/site-data';
 import { Camera, Heart, Eye, Award, Calendar } from 'lucide-react';
 
-export default function AboutPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export const revalidate = 60;
+
+export default async function AboutPage() {
+  const settings = await getPublicSettings();
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full py-12">
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -82,7 +81,7 @@ export default function AboutPage() {
         </div>
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

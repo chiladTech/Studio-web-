@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { revalidatePublicData } from '@/lib/revalidate';
 import { logActivity } from '@/lib/audit';
 
 export async function PATCH(
@@ -23,6 +24,8 @@ export async function PATCH(
       resource: 'Packages',
       details: `Updated package: "${updated.name}" — Price: ${updated.priceDisplay}`,
     });
+
+    revalidatePublicData();
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
@@ -48,6 +51,7 @@ export async function DELETE(
       details: `Deleted package: "${pkg?.name || params.id}"`,
     });
 
+    revalidatePublicData();
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to delete package' }, { status: 500 });

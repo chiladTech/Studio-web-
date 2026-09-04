@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 export async function GET() {
   try {
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
         isPublished: body.isPublished ?? true,
       },
     });
+    revalidatePublicData();
+
     return NextResponse.json({ success: true, data: service }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Failed to create service' }, { status: 500 });

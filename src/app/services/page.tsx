@@ -1,48 +1,32 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import Header from '@/components/public/Header';
-import MobileMenu from '@/components/public/MobileMenu';
+import PublicNav from '@/components/public/PublicNav';
 import Footer from '@/components/public/Footer';
+import { getPublicSettings, getServices } from '@/lib/site-data';
+import EmptyState from '@/components/public/EmptyState';
 import { Camera, Calendar } from 'lucide-react';
 
-export default function ServicesPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [services, setServices] = useState<any[]>([]);
+export const revalidate = 60;
 
-  const defaultServices = [
-    { name: 'Wedding Photography', shortDesc: 'Elegant, candid coverage of your special day. We capture the laughter, tears, and timeless moments.', coverImage: '/images/wedding-1.jpg' },
-    { name: 'Portrait Photography', shortDesc: 'Natural and stunning portraits that reflect your personality — from personal branding to family sessions.', coverImage: '/images/portrait_1.jpg' },
-    { name: 'Event Photography', shortDesc: 'Corporate galas, private parties, cultural ceremonies, and everything in between.', coverImage: '/images/event-1.jpg' },
-    { name: 'Fashion Photography', shortDesc: 'Editorial and commercial shoots with a refined aesthetic. We bring your creative vision to life.', coverImage: '/images/portrait_2.jpg' },
-    { name: 'Product Photography', shortDesc: 'High-quality product imagery that highlights every detail and elevates your brand.', coverImage: '/images/product-1.jpg' },
-    { name: 'Nature & Commercial', shortDesc: 'Capturing landscapes, wildlife, architectural spaces, and commercial brand storytelling.', coverImage: '/images/nature-1.jpg' },
-  ];
+const defaultServices = [
+  { name: 'Wedding Photography', shortDesc: 'Elegant, candid coverage of your special day. We capture the laughter, tears, and timeless moments.', coverImage: '/images/wedding-1.jpg' },
+  { name: 'Portrait Photography', shortDesc: 'Natural and stunning portraits that reflect your personality — from personal branding to family sessions.', coverImage: '/images/portrait_1.jpg' },
+  { name: 'Event Photography', shortDesc: 'Corporate galas, private parties, cultural ceremonies, and everything in between.', coverImage: '/images/event-1.jpg' },
+  { name: 'Fashion Photography', shortDesc: 'Editorial and commercial shoots with a refined aesthetic. We bring your creative vision to life.', coverImage: '/images/portrait_2.jpg' },
+  { name: 'Product Photography', shortDesc: 'High-quality product imagery that highlights every detail and elevates your brand.', coverImage: '/images/product-1.jpg' },
+  { name: 'Nature & Commercial', shortDesc: 'Capturing landscapes, wildlife, architectural spaces, and commercial brand storytelling.', coverImage: '/images/nature-1.jpg' },
+];
 
-  useEffect(() => {
-    async function loadDynamicServices() {
-      try {
-        const res = await fetch('/api/v1/services');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data && data.data.length > 0) {
-            setServices(data.data);
-            return;
-          }
-        }
-      } catch (e) {}
-      setServices(defaultServices);
-    }
-    loadDynamicServices();
-  }, []);
-
-  const displayList = services.length > 0 ? services : defaultServices;
+export default async function ServicesPage() {
+  const settings = await getPublicSettings();
+  const servicesResult = await getServices();
+  const showEmptyState = !servicesResult.error && servicesResult.data.length === 0;
+  const displayList = servicesResult.error ? defaultServices : servicesResult.data;
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#fcf9f6]">
-      <Header onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-      <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <PublicNav settings={settings} />
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 w-full py-12">
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -58,17 +42,27 @@ export default function ServicesPage() {
           </p>
         </div>
 
+        {showEmptyState ? (
+          <EmptyState
+            icon={<Camera className="w-6 h-6 text-[#6a1b2a]" />}
+            title="No services are currently available."
+            message="Check back soon — new services will appear here once published."
+          />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {displayList.map((svc, idx) => (
+          {displayList.map((svc: any, idx: number) => (
             <div
               key={svc.id || idx}
               className="bg-white rounded-3xl overflow-hidden border border-[#ece0e0] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group hover:-translate-y-1.5"
             >
               <div className="relative h-48 overflow-hidden bg-neutral-900">
-                <img
+                <Image
                   src={svc.coverImage || '/images/wedding-1.jpg'}
                   alt={svc.name || svc.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  priority={idx < 3}
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-4 left-4 flex items-center gap-3 text-white">
@@ -93,9 +87,10 @@ export default function ServicesPage() {
             </div>
           ))}
         </div>
+        )}
       </main>
 
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

@@ -1,12 +1,12 @@
-'use client';
-
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Camera, Award } from 'lucide-react';
+import SmartHeroVideo from './SmartHeroVideo';
 
 interface HeroSectionProps {
   videoUrl?: string;
-  settingsLoaded?: boolean;
+  posterUrl?: string;
   eyebrow?: string;
   titleLine1?: string;
   titleLine2?: string;
@@ -18,7 +18,7 @@ interface HeroSectionProps {
 
 export default function HeroSection({
   videoUrl = '/background.mp4',
-  settingsLoaded = true, // default true for cases where HeroSection is used standalone
+  posterUrl = '/images/wedding-1.jpg',
   eyebrow = 'Capturing Moments, Creating Stories',
   titleLine1 = "WE DON'T JUST TAKE PHOTOS",
   titleLine2 = 'We Capture Emotions.',
@@ -29,24 +29,21 @@ export default function HeroSection({
 }: HeroSectionProps) {
   return (
     <section className="relative min-h-[85vh] lg:min-h-[90vh] my-6 rounded-2xl md:rounded-3xl overflow-hidden flex items-center justify-center text-center shadow-xl">
-      {/* Solid dark background — always visible, acts as placeholder while video loads */}
-      <div className="absolute inset-0 bg-neutral-900 z-0" />
+      {/* Poster image — renders immediately in the server HTML; doubles as the
+          fallback if the video is disabled (mobile/data-saver) or fails. */}
+      <Image
+        src={posterUrl}
+        alt=""
+        aria-hidden
+        fill
+        priority
+        sizes="100vw"
+        className="absolute inset-0 object-cover z-0"
+      />
 
-      {/* Background Video — only rendered after settings are confirmed to avoid old-video flash */}
-      {settingsLoaded && videoUrl && (
-        <video
-          key={videoUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover z-0 animate-fadeIn"
-          style={{ animation: 'fadeInVideo 0.8s ease-in forwards' }}
-        >
-          <source src={videoUrl} type="video/mp4" />
-          <source src={videoUrl} type="video/webm" />
-        </video>
-      )}
+      {/* Background Video — only rendered after the client confirms the device
+          should download video (desktop, no reduced-motion/data preference). */}
+      <SmartHeroVideo videoUrl={videoUrl} />
 
       {/* Hero Overlay */}
       <div className="absolute inset-0 bg-black/55 z-10 backdrop-brightness-95" />
@@ -98,7 +95,7 @@ export default function HeroSection({
         </div>
       </div>
 
-      {/* Inline keyframe for fade-in animation */}
+      {/* Inline keyframe for video fade-in animation */}
       <style>{`
         @keyframes fadeInVideo {
           from { opacity: 0; }

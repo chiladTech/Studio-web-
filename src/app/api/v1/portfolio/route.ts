@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 // GET /api/v1/portfolio — Get all portfolio projects with category and media
 export async function GET(request: Request) {
@@ -75,6 +76,8 @@ export async function POST(request: Request) {
         media: true,
       },
     });
+
+    revalidatePublicData();
 
     return NextResponse.json({ success: true, data: project }, { status: 201 });
   } catch (err: any) {

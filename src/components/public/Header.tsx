@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, Calendar } from 'lucide-react';
@@ -24,48 +24,20 @@ const DEFAULT_NAV: NavLinkItem[] = [
 
 interface HeaderProps {
   onOpenMobileMenu: () => void;
+  /** Flat map of WebsiteSetting values (fetched once server-side, never per-client). */
+  settings?: Record<string, any>;
 }
 
-export default function Header({ onOpenMobileMenu }: HeaderProps) {
+export default function Header({ onOpenMobileMenu, settings }: HeaderProps) {
   const pathname = usePathname();
-  const [navLinks, setNavLinks] = useState<NavLinkItem[]>(DEFAULT_NAV);
-  const [logoUrl, setLogoUrl] = useState<string>('/my-logo.png');
-  const [headerCtaText, setHeaderCtaText] = useState<string>('BOOK A SESSION');
-  const [headerCtaLink, setHeaderCtaLink] = useState<string>('/book');
-  const [headerCtaVisible, setHeaderCtaVisible] = useState<boolean>(true);
-  const [studioName, setStudioName] = useState<string>('MAYA PICTURES');
 
-  useEffect(() => {
-    async function loadHeaderSettings() {
-      try {
-        const res = await fetch('/api/v1/settings');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data) {
-            if (Array.isArray(data.data.navLinks) && data.data.navLinks.length > 0) {
-              setNavLinks(data.data.navLinks);
-            }
-            if (data.data.logoUrl !== undefined) {
-              setLogoUrl(data.data.logoUrl);
-            }
-            if (data.data.headerCtaText) {
-              setHeaderCtaText(data.data.headerCtaText);
-            }
-            if (data.data.headerCtaLink) {
-              setHeaderCtaLink(data.data.headerCtaLink);
-            }
-            if (typeof data.data.headerCtaVisible === 'boolean') {
-              setHeaderCtaVisible(data.data.headerCtaVisible);
-            }
-            if (data.data.studioName) {
-              setStudioName(data.data.studioName);
-            }
-          }
-        }
-      } catch {}
-    }
-    loadHeaderSettings();
-  }, []);
+  const navLinks: NavLinkItem[] =
+    Array.isArray(settings?.navLinks) && settings.navLinks.length > 0 ? settings.navLinks : DEFAULT_NAV;
+  const logoUrl = settings?.logoUrl !== undefined ? settings.logoUrl : '/my-logo.png';
+  const headerCtaText = settings?.headerCtaText || 'BOOK A SESSION';
+  const headerCtaLink = settings?.headerCtaLink || '/book';
+  const headerCtaVisible = typeof settings?.headerCtaVisible === 'boolean' ? settings.headerCtaVisible : true;
+  const studioName = settings?.studioName || 'MAYA PICTURES';
 
   return (
     <header className="w-full bg-[#fcf9f6] border-b border-[#6a1b2a]/15 sticky top-0 z-50 transition-all">

@@ -15,7 +15,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!token) {
     console.error('BLOB_READ_WRITE_TOKEN is missing in environment variables.');
     return NextResponse.json(
-      { error: 'Server configuration error: BLOB_READ_WRITE_TOKEN is not configured in environment variables.' },
+      { error: 'Server configuration error: media storage is not configured.' },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { revalidatePublicData } from '@/lib/revalidate';
 
 export async function GET() {
   try {
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
         coverImage,
       },
     });
+
+    revalidatePublicData();
 
     return NextResponse.json({ success: true, data: category }, { status: 201 });
   } catch (error: any) {
